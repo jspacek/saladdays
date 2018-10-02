@@ -22,6 +22,8 @@ def proxy_block(env, proxy_system, single_block_rate):
         yield env.timeout(single_block_rate)
         if proxy_system.vulnerable:
             proxy = random.choice(tuple(proxy_system.vulnerable))
+            print('Randomly select "%s" to block ' % (proxy.name))
+            proxy_system.events.append(commons.Event(env.now, 'BLOCK','0','None', proxy.name))
             proxy_system.blocked.add(proxy)
             proxy_system.vulnerable.discard(proxy)
             proxy_system.proxies.discard(proxy)
@@ -36,14 +38,21 @@ def client_assignment(env, proxy_system, client_arrival_rate):
         yield env.timeout(client_arrival_rate)
         if (proxy_system.proxies):
             proxy1 = random.choice(tuple(proxy_system.proxies))
+            print('Randomly select 1 "%s" to assign ' % (proxy1.name))
             proxy2 = random.choice(tuple(proxy_system.proxies))
+            print('Randomly select 2 "%s" to assign ' % (proxy2.name))
             # Assign the client to the youngest proxy
             if proxy1.age < proxy2.age:
-                print('Client %d  --> Proxy %d' % (env.now, proxy1.age))
-                proxy1.clients.add(commons.Client(env, env.now, proxy1, proxy_system))
+                print('Client %d  --> "%s"' % (env.now, proxy1.name))
+                client = commons.Client(env, env.now, proxy1, proxy_system)
+                proxy1.clients.add(client)
+                proxy_system.events.append(commons.Event(env.now, 'ASSIGN',client.age, client.malicious,proxy1.name))
+
             else:
-                print('Client %d --> Proxy %d' % (env.now, proxy2.age))
-                proxy2.clients.add(commons.Client(env, env.now, proxy2, proxy_system))
+                print('Client %d --> "%s"' % (env.now, proxy2.name))
+                client = commons.Client(env, env.now, proxy2, proxy_system)
+                proxy2.clients.add(client)
+                proxy_system.events.append(commons.Event(env.now, 'ASSIGN',client.age, client.malicious,proxy2.name))
         else:
             print('Death of the system, all proxies are blocked')
             env.exit()

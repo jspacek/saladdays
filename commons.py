@@ -32,4 +32,16 @@ class Client(object):
             # Therefore, more than one malicious client assigned to the same
             # proxy does not increase the likelihood of blocking this proxy.
             if proxy not in proxy_system.vulnerable:
+                print('Adding %s to the vulnerable list length of list %d' % (proxy.name, len(proxy_system.vulnerable)))
                 proxy_system.vulnerable.add(proxy)
+
+class Event(object):
+    """
+    Used as a container to store information about events for later analysis
+    """
+    def __init__(self, time, action, clientage, clientmalicious, proxyname):
+        self.time = time
+        self.action = action
+        self.clientage = clientage
+        self.clientmalicious = clientmalicious
+        self.proxyname = proxyname

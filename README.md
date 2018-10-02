@@ -1,3 +1,17 @@
+### Setup
+Use python3
+
+pip install simpy
+python simnormal.py
+
+### Notes
+
+If the blocking rate is too* close to the assignment rate, there won't be enough opportunity for the
+assigned proxy list to build up before proxies are selected from the vulnerable list. Make sure there
+is enough of a buffer set so that the proxies can accumulate before blocking. Default is 10 times as slow
+
+* not sure what the threshold point is for this assignment rate yet
+
 ### TODO items
 
 - further the analysis in all bounds and two choice

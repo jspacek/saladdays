@@ -2,14 +2,14 @@ import random
 import simpy
 import collections
 import commons
-import upperbound
+import lowerbound
 
 SEED = 42                           # Answer to life, the universe, and everything
 NUM_PROXIES = 100                   # Default number of total proxies
 NUM_CLIENTS = 1000                  # Total number of clients
 CLIENT_ARRIVAL_MEAN = 10.0          # Average time (ms) in between client arrivals
 CLIENT_ARRIVAL_SIGMA = 2.0          # Sigma for client arrival time
-BLOCK_ARRIVAL_MEAN = 10.0           # Average time (ms) in between blocks
+BLOCK_ARRIVAL_MEAN = 200.0           # Average time (ms) in between blocks
 BLOCK_ARRIVAL_SIGMA = 2.0           # Sigma for blocking
 SIM_TIME = 10000                    # 100 clients assigned one per second
 
@@ -36,8 +36,8 @@ stepwise = simpy.Resource(env, capacity=1)
 proxy_system = Assignments(stepwise, proxies, vulnerable, blocked)
 
 # Start assignment and blocking processes and run
-env.process(upperbound.client_assignment(env, proxy_system, client_arrival_rate()))
-env.process(upperbound.proxy_block(env, proxy_system, single_block_rate()))
+env.process(lowerbound.client_assignment(env, proxy_system, client_arrival_rate()))
+env.process(lowerbound.proxy_block(env, proxy_system, single_block_rate()))
 
 env.run(until=SIM_TIME)
 

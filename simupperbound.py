@@ -2,14 +2,14 @@ import random
 import simpy
 import collections
 import commons
-import agetwochoice
+import upperbound
 
 SEED = 42                           # Answer to life, the universe, and everything
 NUM_PROXIES = 100                   # Default number of total proxies
 NUM_CLIENTS = 1000                  # Total number of clients
 CLIENT_ARRIVAL_MEAN = 10.0          # Average time (ms) in between client arrivals
 CLIENT_ARRIVAL_SIGMA = 2.0          # Sigma for client arrival time
-BLOCK_ARRIVAL_MEAN = 10.0           # Average time (ms) in between blocks
+BLOCK_ARRIVAL_MEAN = 200.0           # Average time (ms) in between blocks
 BLOCK_ARRIVAL_SIGMA = 2.0           # Sigma for blocking
 SIM_TIME = 10000                    # 100 clients assigned one per second
 
@@ -21,7 +21,7 @@ def single_block_rate():
     """Clock time between blocking events of single proxies."""
     return random.normalvariate(BLOCK_ARRIVAL_MEAN, BLOCK_ARRIVAL_SIGMA)
 
-print('Starting the age based simulation: normal state')
+print('Starting the upper bound simulation')
 random.seed(SEED)
 env = simpy.Environment()
 
@@ -36,8 +36,8 @@ stepwise = simpy.Resource(env, capacity=1)
 proxy_system = Assignments(stepwise, proxies, vulnerable, blocked)
 
 # Start assignment and blocking processes and run
-env.process(agetwochoice.client_assignment(env, proxy_system, client_arrival_rate()))
-env.process(agetwochoice.proxy_block(env, proxy_system, single_block_rate()))
+env.process(upperbound.client_assignment(env, proxy_system, client_arrival_rate()))
+env.process(upperbound.proxy_block(env, proxy_system, single_block_rate()))
 
 env.run(until=SIM_TIME)
 
