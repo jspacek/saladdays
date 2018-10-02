@@ -1,8 +1,8 @@
 ### Setup
 Use python3
 
-pip install simpy
-python simnormal.py
+- pip install simpy
+- python simnormal.py
 
 ### Notes
 
