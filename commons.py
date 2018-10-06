@@ -39,9 +39,12 @@ class Event(object):
     """
     Used as a container to store information about events for later analysis
     """
-    def __init__(self, time, action, clientage, clientmalicious, proxyname):
+    def __init__(self, time, action, clientage, clientmalicious, proxyname, numblocked, numvulnerable, numsafe):
         self.time = time
         self.action = action
         self.clientage = clientage
         self.clientmalicious = clientmalicious
         self.proxyname = proxyname
+        self.numblocked = numblocked
+        self.numvulnerable = numvulnerable
+        self.numsafe = numsafe

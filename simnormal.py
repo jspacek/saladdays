@@ -3,6 +3,8 @@ import simpy
 import collections
 import commons
 import agetwochoice
+import matplotlib.pyplot as plt
+
 
 SEED = 42                           # Answer to life, the universe, and everything
 NUM_PROXIES = 100                   # Default number of total proxies
@@ -71,3 +73,28 @@ print('%d Blocked proxies' % (len(blocked)))
     #print(proxy.name)
 
 print('%d Unblocked invulnerable proxies' % (len(proxies - vulnerable)))
+
+times = [event.time for event in events]
+blockedproxies = [event.numblocked for event in events]
+plt.figure(figsize=(8,8))
+plt.plot(times, blockedproxies)
+plt.xlim(0, 10000)
+plt.xlabel('Time')
+plt.ylabel('# blocked proxies')
+plt.show()
+
+vulnproxies = [event.numvulnerable for event in events]
+plt.figure(figsize=(8,8))
+plt.plot(times, vulnproxies)
+plt.xlabel('Time steps')
+plt.ylabel('Num vulnerable proxies over time')
+plt.xlim(0, 10000)
+plt.show()
+
+safeproxies = [event.numsafe for event in events]
+plt.figure(figsize=(8,8))
+plt.plot(times, safeproxies)
+plt.xlabel('Time steps')
+plt.ylabel('Num safe proxies over time')
+plt.xlim(0, 10000)
+plt.show()
