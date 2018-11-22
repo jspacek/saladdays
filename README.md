@@ -21,5 +21,3 @@ is enough of a buffer set so that the proxies can accumulate before blocking. De
 - rate of attack should be conditioned on the ratio of attackers
 - refuse proxy assignments when maximum load reached, default m/n
 - make the choice of malicious clients configurable (currently uniform)
-
-> My salad days, When I was green in judgment, cold in blood, To say as I said then! - Antony and Cleopatra
