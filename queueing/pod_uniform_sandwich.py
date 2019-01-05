@@ -9,14 +9,15 @@ import numpy as np
 # c is the number of proxies
 # n is the size of each individual proxy queue, i.e. load
 
-client_arrival_rate = 3.333333333333 # 200 per half hour in clients/minute
-blocking_rate = 2
+client_arrival_rate = 3.0 # 200 per half hour in clients/minute
+blocking_rate = 2.0
 service_time = 3.0 # process servers time in minutes
-num_proxies = 20
+num_proxies = 10
 queue_size = 10
-sim_time = 60 # in minutes
+sim_time = 80 # in minutes
 censor_bootstrap = 5
-seed = 44
+seed = 47
+TRACE = True
 
 def generate_clients(env, interval, distributor, censor):
     counter = 0
@@ -29,15 +30,28 @@ def generate_clients(env, interval, distributor, censor):
 
 def client_arrival(env, name, distributor, censor):
     arrival = env.now
-    print("%7.4f New Client %s" % (arrival, name))
+    if (TRACE):
+        print("%7.4f New Client %s" % (arrival, name))
 
     # call the distributor to assign a Proxy to the Client as a separate process
-    proxy = distributor.assign(name)
-
-    # Determine maliciousness of client and contact censor
+    # Determine maliciousness of client uniform randomly
+    # (TODO this should instead be linked to the P of censor deploying malicious clients)
     malicious = random.choice([True, False])
+    client = Client(name, malicious)
+    proxy = distributor.assign(client)
+
+    # Contact censor if the client is malicious
     if (malicious):
         censor.enumerate(proxy)
+
+
+class Client(object):
+    """
+    A client is honest or malicious
+    """
+    def __init__(self, name, malicious):
+        self.name = name
+        self.malicious = malicious
 
 class Distributor(object):
     """
@@ -54,20 +68,25 @@ class Distributor(object):
 
     def _bootstrap(self):
         creation = env.now
-        print("%7.4f Bootstrap " % creation )
-
+        if (TRACE):
+            print("%7.4f Bootstrap " % creation )
+            print("number of proxies = %d" % num_proxies)
         for i in range(num_proxies):
             name = 'Proxy %d' % i
             proxy = Proxy(env, name, queue_size, service_time, creation, False, self)
             self.proxies.append(proxy)
-            print("%7.4f New Proxy %s" % (creation, name))
+            if (TRACE):
+                print("%7.4f New Proxy %s" % (creation, name))
 
     def assign(self, client):
         assigned = env.now
 
+        if (len(self.proxies) == 0):
+            print("NO MORE PROXIES")
+            env.exit()
         # Randomly select two proxies from the list to assign to the client
-        random_index_1 = random.randint(0,num_proxies-1)
-        random_index_2 = random.randint(0,num_proxies-1)
+        random_index_1 = random.randint(0,len(self.proxies)-1)
+        random_index_2 = random.randint(0,len(self.proxies)-1)
 
         random_proxy_1 = self.proxies[random_index_1]
         random_proxy_2 = self.proxies[random_index_2]
@@ -80,22 +99,34 @@ class Distributor(object):
             env.process(random_proxy_1.service(client))
             return random_proxy_1
 
-    def notify_block(self, name):
+    def notify_block(self, proxy):
         time = self.env.now
-        for proxy in self.blocked:
-            print("blocked ", proxy.name)
+        total_healthy = 0
+        system_health = 0
+        honest_clients = 0
         if (proxy in self.blocked):
-            # Log a blocking miss event
+            # Log a blocking miss event, unlikely to happen if the censor is smart
             total_healthy = len(self.proxies) - len(self.blocked)
             system_health = 1 - len(self.blocked)/len(self.proxies)
-            event = Event(proxy.name, "MISS_PROXY_BLOCK", len(self.blocked), total_healthy, -1, system_health, time)
+            event = Event(proxy.name, "MISS_PROXY_BLOCK", len(self.blocked), total_healthy, -1, -1, system_health, time)
             self.events.append(event)
         else:
             self.blocked.append(proxy)
+            self.proxies.remove(proxy)
             # Log the blocking event
-            total_healthy = len(self.proxies) - len(self.blocked)
-            system_health = 1 - len(self.blocked)/len(self.proxies)
-            event = Event(proxy.name, "PROXY_BLOCK", len(self.blocked), total_healthy, -1, system_health, time)
+            if (len(self.proxies) == 0):
+                print("in notifiy and it is DEAD")
+            else:
+                total_healthy = len(self.proxies) - len(self.blocked)
+                system_health = 1 - len(self.blocked)/len(self.proxies)
+
+            for client in proxy.queue:
+                if (not client.malicious):
+                    honest_clients = honest_clients + 1
+
+            malicious_clients = len(proxy.queue) - honest_clients
+            event = Event(proxy.name, "PROXY_BLOCK", len(self.blocked), total_healthy, honest_clients, malicious_clients, system_health, time)
+
             self.events.append(event)
 
 class Proxy(object):
@@ -122,12 +153,12 @@ class Proxy(object):
         yield self.env.timeout(yield_time)
 
         completed = env.now
-        print("%7.4f %s assigned to %s" % (completed, self.name, client))
+        if (TRACE):
+            print("%7.4f %s assigned to %s" % (completed, self.name, client.name))
 
     def block(self):
         self.blocked = True
-        print("i am contacting the block ", self.name)
-        self.distributor.notify_block(self.name)
+        self.distributor.notify_block(self)
 
 class Censor(object):
     """
@@ -144,14 +175,16 @@ class Censor(object):
     def _block(self):
         yield self.env.timeout(censor_bootstrap)
         # TODO this is not a very smart strategy for a censor to employ
+        # it should order by size of queue etc.
         while(True):
             # Assume the censor chooses a proxy to block uniform randomly
             if (len(self.proxies) > 0):
                 random_index = random.randint(0,len(self.proxies)-1)
                 block_proxy = self.proxies[random_index]
-                #if (block_proxy not in self.blocked):
+
                 block_proxy.block()
                 self.blocked.append(block_proxy)
+                self.proxies.remove(block_proxy)
 
             t = random.expovariate(1.0 / blocking_rate)
             yield env.timeout(t)
@@ -159,62 +192,83 @@ class Censor(object):
 
     def enumerate(self, proxy):
         time = env.now
-        self.proxies.append(proxy)
-        # TODO event calculations
-        event = Event(proxy.name, "PROXY_ENUMERATED", -1, -1, len(self.proxies), -1, time)
-        self.events.append(event)
-
+        if (proxy not in self.proxies and proxy not in self.blocked):
+            self.proxies.append(proxy)
+            event = Event(proxy.name, "ENUMERATE_PROXY", -1, -1, -1, -1, -1, time)
+            self.events.append(event)
+        else:
+            event = Event(proxy.name, "MISS_ENUMERATE_PROXY", -1, -1, -1, -1, -1, time)
+            self.events.append(event)
 
 class Event(object):
     """
     An event is recorded when a proxy is blocked
     A collection of static events is used for statistics
     """
-    def __init__(self, proxy_name, action, total_blocked, total_healthy, total_enumerated, system_health, time):
+    def __init__(self, proxy_name, action, total_blocked, total_healthy,
+    honest_clients, malicious_clients, system_health, time):
         self.proxy_name = proxy_name
         self.action = action
         self.total_blocked = total_blocked
         self.total_healthy = total_healthy
-        self.total_enumerated = total_enumerated
+        self.honest_clients = honest_clients
+        self.malicious_clients = malicious_clients
         self.system_health = system_health
         self.time = time
 
 
-print('Uniform Random M/M/c/n Network Queue')
-print("**************** Simulation ****************")
+print("**************** SIMULATION ****************")
+print("Switch between Power of D choice to unbalanced in a M/M/c/n Network Queue")
+print(""" client_arrival_rate=%f \n blocking_rate=%f \n service_time=%f
+ num_proxies=%d \n queue_size=%d \n sim_time(minutes)=%f \n censor_bootstrap(minutes)=%f """ %
+(client_arrival_rate, blocking_rate, service_time, num_proxies, queue_size, sim_time, censor_bootstrap))
 
+print("********************************************")
+
+# Run simulation
 random.seed(seed)
 env = simpy.Environment()
-counter = simpy.Resource(env, capacity=1)
 distributor = Distributor(env, [], [], [])
 censor = Censor(env, [], [], [])
 env.process(generate_clients(env, client_arrival_rate, distributor, censor))
 env.run(until=sim_time)
 
-print("**************** Evaluation ****************")
-# Probability that the customer has to wait for service
-# E = λ x h, λ = mean arrival rate, h = mean service time
-erlangs = (client_arrival_rate * 60 * service_time)/60 # lambda/mu in hour or # clients per hour * service time in minutes
-multiplicand = (math.pow(erlangs, num_proxies)/math.factorial(num_proxies)) * (num_proxies/(num_proxies-erlangs))
-lmbd = [math.pow(erlangs, x)/math.factorial(x) for x in range(0, num_proxies)]
-summation = sum(lmbd)
-denominator = summation + multiplicand
-Pw = multiplicand/denominator
-print("Probability of waiting %f"% Pw)
-# TODO Blocking probability for finite capacity queues
+print("**************** EVALUATION ****************")
 
-# Client load on each server
-total_in_queue = 0
-total_blocked = 0
-for proxy in distributor.proxies:
-    print("%s has %d clients, blocked = %s" % (proxy.name, len(proxy.queue), proxy.blocked))
-    total_in_queue = total_in_queue + len(proxy.queue)
+print("**************** Collateral Damage ****************")
+# proxies blocked with honest clients assigned
+total_honest_clients = 0
+total_malicious_clients = 0
 
-print("Events in Distributor")
 for event in distributor.events:
-    print("%7.4f %s %s total blocked=%d total healthy=%d system health=%f" % (event.time, event.action, event.proxy_name, event.total_blocked, event.total_healthy, event.system_health))
+    print("%7.4f %s %s honest_clients=%d malicious_clients=%d"
+    % (event.time, event.action, event.proxy_name, event.honest_clients, event.malicious_clients))
+    total_honest_clients = total_honest_clients + event.honest_clients
+    total_malicious_clients = total_malicious_clients + event.malicious_clients
 
-# TODO censor events
+print("Total honest clients affected by proxy blocking = %d" % total_honest_clients)
+collateral_damage = (total_honest_clients/ (total_honest_clients + total_malicious_clients)) * 100
+print("Collateral damage = %f %%" % collateral_damage)
 
-print("Total clients in all queues %d" % total_in_queue)
-print("Total proxies blocked %d" % len(distributor.blocked))
+print("**************** Censor Resource Loss ****************")
+# clients assigned to a proxy with another malicious client already assigned to it
+
+total_client_misses = 0
+for event in censor.events:
+    if (event.action == "MISS_ENUMERATE_PROXY"):
+        print("%7.4f %s %s" % (event.time, event.action, event.proxy_name))
+        total_client_misses = total_client_misses + 1
+
+print("Total censor resource loss = %d out of %d malicious clients" % (total_client_misses, total_malicious_clients))
+print("Censor resource loss = %f %%" % ((total_client_misses/total_malicious_clients)*100))
+print("**************** System Health ****************")
+
+
+
+
+
+#total_in_queue = 0
+#total_blocked = 0
+#for proxy in distributor.proxies:
+    #print("%s has %d clients, blocked = %s" % (proxy.name, len(proxy.queue), proxy.blocked))
+    #total_in_queue = total_in_queue + len(proxy.queue)
