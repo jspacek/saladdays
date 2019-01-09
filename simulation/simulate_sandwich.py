@@ -11,9 +11,12 @@ from core import util
 queue_size = 10
 service_time = 1.0
 blocking_rate = 1.0
+panic_level = 0
 
 def generate_clients(env, interval, distributor, censor, trace):
     counter = 0
+    print("what is")
+    print(panic_level)
     while(len(distributor.proxies) > 0): # infinite incoming clients
         name = 'Client %d' % counter
         client_arrival(env, name, distributor, censor, trace)
@@ -79,12 +82,22 @@ class Distributor(object):
         random_proxy_2 = self.proxies[random_index_2]
         # TODO check that the queue is not full otherwise balk, or retry (a bit too complex? more enumeration to track?)
         # Branch process to service the client based on shorter queue (less historical load)
-        if (len(random_proxy_1.queue) > len(random_proxy_2.queue)):
-            self.env.process(random_proxy_2.service(client))
-            return random_proxy_2
-        else:
+        if (panic_level > 0):
+            print("in panic mode %d" % panic_level)
+            print(assigned)
+            # pick a victim proxy
+            random_proxy_1 = self.proxies[0]
+            print(random_proxy_1.name)
+
             self.env.process(random_proxy_1.service(client))
             return random_proxy_1
+        else:
+            if (len(random_proxy_1.queue) > len(random_proxy_2.queue)):
+                self.env.process(random_proxy_2.service(client))
+                return random_proxy_2
+            else:
+                self.env.process(random_proxy_1.service(client))
+                return random_proxy_1
 
     def notify_block(self, proxy):
         time = self.env.now
@@ -103,6 +116,17 @@ class Distributor(object):
             else:
                 action = "PROXY_BLOCK"
                 system_health = (1-len(self.blocked)/(len(self.proxies)+len(self.blocked))) * 100
+                global panic_level
+                if (len(self.blocked) > len(self.proxies)):
+                    print("do panic")
+                    print(time)
+                    panic_level = panic_level + 1
+                    print("lanic level is %d" % panic_level)
+                else:
+                    print("do not panic")
+                    print(time)
+                    print("lanic level is %d" % panic_level)
+                    panic_level = 0
 
         total_healthy = len(self.proxies)
         honest_clients = 0
@@ -160,6 +184,9 @@ class Censor(object):
         return self.proxies + " \n".join(self.blocked)
 
 def run(seed, client_arrival_rate, num_proxies, censor_bootstrap, trace):
+    global panic_level
+    panic_level = 0
+
     random.seed(seed)
     env = simpy.Environment()
 

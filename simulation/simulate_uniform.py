@@ -6,7 +6,7 @@ sys.path.append('.')
 from core import util
 
 # M/M/c/k Jackson network queue model
-# Assign clients to proxies using power of 2 choices (aka Power of D Choices)
+# Assign clients to proxies uniform randomly
 
 queue_size = 10
 service_time = 1.0
@@ -71,20 +71,14 @@ class Distributor(object):
             if (self.trace):
                 print("NO MORE PROXIES")
             self.env.exit()
-        # Randomly select two proxies from the list to assign to the client
-        random_index_1 = random.randint(0,len(self.proxies)-1)
-        random_index_2 = random.randint(0,len(self.proxies)-1)
+        # Randomly select one proxy from the list to assign to the client
+        random_index = random.randint(0,len(self.proxies)-1)
 
-        random_proxy_1 = self.proxies[random_index_1]
-        random_proxy_2 = self.proxies[random_index_2]
+        random_proxy = self.proxies[random_index]
         # TODO check that the queue is not full otherwise balk, or retry (a bit too complex? more enumeration to track?)
         # Branch process to service the client based on shorter queue (less historical load)
-        if (len(random_proxy_1.queue) > len(random_proxy_2.queue)):
-            self.env.process(random_proxy_2.service(client))
-            return random_proxy_2
-        else:
-            self.env.process(random_proxy_1.service(client))
-            return random_proxy_1
+        self.env.process(random_proxy.service(client))
+        return random_proxy
 
     def notify_block(self, proxy):
         time = self.env.now
@@ -133,11 +127,12 @@ class Censor(object):
         # TODO this is not a very smart strategy for a censor to employ
         # it should order by size of queue etc.
         while(True):
-            # Assume the censor chooses a proxy to block uniform randomly
+            # Censor chooses a proxy to block uniform randomly
             if (len(self.proxies) > 0):
-                random_index = random.randint(0,len(self.proxies)-1)
-                block_proxy = self.proxies[random_index]
-
+                self.proxies.sort(key=lambda p: len(p.queue), reverse=True)
+                block_proxy = self.proxies[0]
+                #print(len(block_proxy.queue))
+                #print(len(self.proxies[-1].queue))
                 block_proxy.block()
                 self.blocked.append(block_proxy)
                 self.proxies.remove(block_proxy)

@@ -5,7 +5,10 @@ sys.path.append('.')
     #print(p)
 from core import util
 import simulate_PoD
+import simulate_uniform
+import simulate_sandwich
 
+# Global parameters used for sweeping
 client_arrival_rate = 0
 seed = 0
 sweep = 0
@@ -16,27 +19,54 @@ def run():
     set_defaults()
     for i in range(0, util.NUM_TRIALS):
         trial = trial + 1
+        print("*******************************************")
+        print(trial)
         global seed
         seed = seed + trial # PRNG new sequence for new trial
-        # Client arrival rate sweep
+        global client_arrival_rate
+
+        """
+        # Client arrival rate sweep for Power of D choices
         for j in range(0, util.SWEEP):
-            global client_arrival_rate
-            # TODO run the uniform and sandwich simulations here too
-            events = simulate_PoD.run(seed, client_arrival_rate, util.NUM_PROXIES, censor_bootstrap, util.TRACE)
-            events_df = pd.DataFrame([vars(event) for event in events])
-            events_df = events_df[['time','action','proxy_name','honest_clients','malicious_clients','system_health','total_blocked','total_healthy']]
+            events_pod = simulate_PoD.run(seed, client_arrival_rate, util.NUM_PROXIES, censor_bootstrap, util.TRACE)
+            events_pod_df = pd.DataFrame([vars(event) for event in events_pod])
+            events_pod_df = events_pod_df[['time','action','proxy_name','honest_clients','malicious_clients','system_health','total_blocked','total_healthy']]
 
             if (util.TRACE):
-                print(events_df)
+                print(events_pod_df)
             filename = "analysis/results/PoD_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
-            events_df.to_csv(filename)
+            events_pod_df.to_csv(filename)
             client_arrival_rate = client_arrival_rate + 1
 
-
         set_defaults()
+        seed = seed + trial # PRNG new sequence for new trial
 
-        # Censor Bootstrap period sweep - Affects the # of honest clients that join a proxy)
+        # Client arrival rate sweep for uniform  choices
+        for j in range(0, util.SWEEP):
+            events_uni = simulate_uniform.run(seed, client_arrival_rate, util.NUM_PROXIES, censor_bootstrap, util.TRACE)
+            events_uni_df = pd.DataFrame([vars(event) for event in events_uni])
+            events_uni_df = events_uni_df[['time','action','proxy_name','honest_clients','malicious_clients','system_health','total_blocked','total_healthy']]
 
+            if (util.TRACE):
+                print(events_pod_df)
+            filename = "analysis/results/Uniform_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
+            events_uni_df.to_csv(filename)
+            client_arrival_rate = client_arrival_rate + 1
+        """
+        set_defaults()
+        seed = seed + trial # PRNG new sequence for new trial
+
+        # Client arrival rate sweep for sandwich
+        for j in range(0, util.SWEEP):
+            events_sand = simulate_sandwich.run(seed, client_arrival_rate, util.NUM_PROXIES, censor_bootstrap, util.TRACE)
+            events_sand_df = pd.DataFrame([vars(event) for event in events_sand])
+            events_sand_df = events_sand_df[['time','action','proxy_name','honest_clients','malicious_clients','system_health','total_blocked','total_healthy']]
+
+            if (util.TRACE):
+                print(events_pod_df)
+            filename = "analysis/results/Sandwich_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
+            events_sand_df.to_csv(filename)
+            client_arrival_rate = client_arrival_rate + 1
 
 
 def set_defaults():
