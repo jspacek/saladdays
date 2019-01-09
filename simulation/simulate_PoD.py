@@ -1,29 +1,29 @@
 import random
 import simpy
 import math
-import numpy as np
-import util
+import sys
+sys.path.append('.')
+from core import util
 
 # A Jackson Network of M/M/c/n queues that switched between power of d choice and uniform probability distribution
 # Client arrivals, censor blocking rate and service time are poisson process (exponential interarrival times)
 
-TRACE = False
 queue_size = 10
 service_time = 1.0
 blocking_rate = 1.0
 
-def generate_clients(env, interval, distributor, censor):
+def generate_clients(env, interval, distributor, censor, trace):
     counter = 0
     while(len(distributor.proxies) > 0): # infinite incoming clients
         name = 'Client %d' % counter
-        client_arrival(env, name, distributor, censor)
+        client_arrival(env, name, distributor, censor, trace)
         t = random.expovariate(1.0 / interval)
         yield env.timeout(t)
         counter = counter + 1
 
-def client_arrival(env, name, distributor, censor):
+def client_arrival(env, name, distributor, censor, trace):
     arrival = env.now
-    if (TRACE):
+    if (trace):
         print("%7.4f New Client %s" % (arrival, name))
 
     # call the distributor to assign a Proxy to the Client as a separate process
@@ -43,31 +43,32 @@ class Distributor(object):
     It maintains a list of all proxies in the system and distributes proxies
     to clients based on uniform random selection.
     """
-    def __init__(self, env, proxies, blocked, events, num_proxies):
+    def __init__(self, env, proxies, blocked, events, num_proxies, trace):
         self.env = env
         self.proxies = proxies
         self.blocked = blocked
         self.events = events
         self.num_proxies = num_proxies
+        self.trace = trace
         self._bootstrap()
 
     def _bootstrap(self):
         creation = self.env.now
-        if (TRACE):
+        if (self.trace):
             print("%7.4f Bootstrap " % creation )
-            print("number of proxies = %d" % num_proxies)
+            print("number of proxies = %d" % self.num_proxies)
         for i in range(self.num_proxies):
             name = 'Proxy %d' % i
-            proxy = util.Proxy(self.env, name, queue_size, service_time, creation, False, self, random, TRACE)
+            proxy = util.Proxy(self.env, name, queue_size, service_time, creation, False, self, random, self.trace)
             self.proxies.append(proxy)
-            if (TRACE):
+            if (self.trace):
                 print("%7.4f New Proxy %s" % (creation, name))
 
     def assign(self, client):
         assigned = self.env.now
 
         if (len(self.proxies) == 0):
-            if (TRACE):
+            if (self.trace):
                 print("NO MORE PROXIES")
             self.env.exit()
         # Randomly select two proxies from the list to assign to the client
@@ -96,7 +97,7 @@ class Distributor(object):
             self.blocked.append(proxy)
             self.proxies.remove(proxy)
             if (len(self.proxies) == 0):
-                if (TRACE):
+                if (self.trace):
                     print("No more proxies available")
                 action = "PROXY_DEATH"
             else:
@@ -159,13 +160,12 @@ class Censor(object):
         return self.proxies + " \n".join(self.blocked)
 
 def run(seed, client_arrival_rate, num_proxies, censor_bootstrap, trace):
-    TRACE = trace
     random.seed(seed)
     env = simpy.Environment()
 
-    distributor = Distributor(env, [], [], [], num_proxies)
+    distributor = Distributor(env, [], [], [], num_proxies, trace)
     censor = Censor(env, [], [], [], censor_bootstrap)
-    env.process(generate_clients(env, client_arrival_rate, distributor, censor))
+    env.process(generate_clients(env, client_arrival_rate, distributor, censor, trace))
 
     env.run() # run until system is dead (no more unblocked proxies)
 

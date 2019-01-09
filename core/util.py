@@ -1,3 +1,12 @@
+# Default values for trials
+NUM_TRIALS = 100
+SEED = 42
+SWEEP = 1
+CLIENT_ARRIVAL_RATE = 1.0
+NUM_PROXIES = 10
+CENSOR_BOOTSTRAP = 50
+TRACE = False
+
 class Event(object):
     """
     An event is recorded when a proxy is blocked
