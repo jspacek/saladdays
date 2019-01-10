@@ -1,11 +1,12 @@
 # Default values for trials
-NUM_TRIALS = 500
+NUM_TRIALS = 200
 SEED = 42 # Fixes random state for reproducibility
 SWEEP = 1
 CLIENT_ARRIVAL_RATE = 1.0
 NUM_PROXIES = 100
 CENSOR_BOOTSTRAP = 50
 TRACE = False
+VICTIM_SET = 20 # fraction of total unblocked proxies
 
 class Event(object):
     """

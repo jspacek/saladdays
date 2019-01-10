@@ -83,12 +83,24 @@ class Distributor(object):
         if (panic_level > 0):
             #print("in panic mode %d" % panic_level)
             #print(assigned)
-            # pick a victim proxy TODO set of victim proxies
-            random_proxy_1 = self.proxies[0]
-            #print(random_proxy_1.name)
+            # choose a victim proxy set *once* based on the current ordering of proxy load
+            # Perform sort and return new list (not inplace)
+            sorted_proxies = sorted(self.proxies, key=lambda p: len(p.queue), reverse=True)
+            victim_proxies = []
+            # size is a fraction of the total unblocked proxies
+            victim_size = (int)(len(self.proxies)/util.VICTIM_SET)
+            #print(victim_size)
+            if (victim_size > 0):
+                # choose randomly from the top most heavily loaded proxies
+                # selecting only from a fraction of the victim set
+                random_index_1 = random.randint(0,victim_size-1)
+                random_proxy_1 = self.proxies[random_index_1]
+                #print(random_proxy_1.name)
+                self.env.process(random_proxy_1.service(client))
+                return random_proxy_1
+            else:
+                return self.proxies[0]
 
-            self.env.process(random_proxy_1.service(client))
-            return random_proxy_1
         else:
             if (len(random_proxy_1.queue) > len(random_proxy_2.queue)):
                 self.env.process(random_proxy_2.service(client))
@@ -148,11 +160,12 @@ class Censor(object):
         # TODO this is not a very smart strategy for a censor to employ
         # it should order by size of queue etc.
         while(True):
-            # Assume the censor chooses a proxy to block uniform randomly
+            # Censor chooses a proxy to block uniform randomly
             if (len(self.proxies) > 0):
-                random_index = random.randint(0,len(self.proxies)-1)
-                block_proxy = self.proxies[random_index]
-
+                self.proxies.sort(key=lambda p: len(p.queue), reverse=True)
+                block_proxy = self.proxies[0]
+                #print(len(block_proxy.queue))
+                #print(len(self.proxies[-1].queue))
                 block_proxy.block()
                 self.blocked.append(block_proxy)
                 self.proxies.remove(block_proxy)

@@ -133,11 +133,12 @@ class Censor(object):
         # TODO this is not a very smart strategy for a censor to employ
         # it should order by size of queue etc.
         while(True):
-            # Assume the censor chooses a proxy to block uniform randomly
+            # Censor chooses a proxy to block uniform randomly
             if (len(self.proxies) > 0):
-                random_index = random.randint(0,len(self.proxies)-1)
-                block_proxy = self.proxies[random_index]
-
+                self.proxies.sort(key=lambda p: len(p.queue), reverse=True)
+                block_proxy = self.proxies[0]
+                #print(len(block_proxy.queue))
+                #print(len(self.proxies[-1].queue))
                 block_proxy.block()
                 self.blocked.append(block_proxy)
                 self.proxies.remove(block_proxy)
