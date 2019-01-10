@@ -7,6 +7,8 @@ from core import util
 
 # M/M/c/k Jackson network queue model
 # Assign clients to proxies using power of 2 choices (aka Power of D Choices)
+# When panic mode activated, switch to a victim set ordered by queue size
+# Assign client to the heavily loaded proxies first
 
 queue_size = 10
 service_time = 1.0
