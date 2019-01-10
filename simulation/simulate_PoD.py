@@ -130,10 +130,8 @@ class Censor(object):
 
     def _block(self):
         yield self.env.timeout(self.bootstrap)
-        # TODO this is not a very smart strategy for a censor to employ
-        # it should order by size of queue etc.
+        # Censor prioritizes blocks by larger queue size to maximize collateral damage
         while(True):
-            # Censor chooses a proxy to block uniform randomly
             if (len(self.proxies) > 0):
                 self.proxies.sort(key=lambda p: len(p.queue), reverse=True)
                 block_proxy = self.proxies[0]
