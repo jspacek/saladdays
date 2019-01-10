@@ -19,13 +19,13 @@ def run():
     set_defaults()
     for i in range(0, util.NUM_TRIALS):
         trial = trial + 1
-        print("*******************************************")
+        print("*******************TRIAL************************")
         print(trial)
-        global seed
-        seed = seed + trial # PRNG new sequence for new trial
         global client_arrival_rate
+        global seed
+        set_defaults()
+        seed = seed + trial # PRNG new sequence for new trial
 
-        """
         # Client arrival rate sweep for Power of D choices
         for j in range(0, util.SWEEP):
             events_pod = simulate_PoD.run(seed, client_arrival_rate, util.NUM_PROXIES, censor_bootstrap, util.TRACE)
@@ -52,7 +52,7 @@ def run():
             filename = "analysis/results/Uniform_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
             events_uni_df.to_csv(filename)
             client_arrival_rate = client_arrival_rate + 1
-        """
+
         set_defaults()
         seed = seed + trial # PRNG new sequence for new trial
 

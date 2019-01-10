@@ -15,8 +15,6 @@ panic_level = 0
 
 def generate_clients(env, interval, distributor, censor, trace):
     counter = 0
-    print("what is")
-    print(panic_level)
     while(len(distributor.proxies) > 0): # infinite incoming clients
         name = 'Client %d' % counter
         client_arrival(env, name, distributor, censor, trace)
@@ -83,11 +81,11 @@ class Distributor(object):
         # TODO check that the queue is not full otherwise balk, or retry (a bit too complex? more enumeration to track?)
         # Branch process to service the client based on shorter queue (less historical load)
         if (panic_level > 0):
-            print("in panic mode %d" % panic_level)
-            print(assigned)
-            # pick a victim proxy
+            #print("in panic mode %d" % panic_level)
+            #print(assigned)
+            # pick a victim proxy TODO set of victim proxies
             random_proxy_1 = self.proxies[0]
-            print(random_proxy_1.name)
+            #print(random_proxy_1.name)
 
             self.env.process(random_proxy_1.service(client))
             return random_proxy_1
@@ -117,16 +115,9 @@ class Distributor(object):
                 action = "PROXY_BLOCK"
                 system_health = (1-len(self.blocked)/(len(self.proxies)+len(self.blocked))) * 100
                 global panic_level
-                if (len(self.blocked) > len(self.proxies)):
-                    print("do panic")
-                    print(time)
+                if (len(self.blocked) > 2):#len(self.proxies)):
                     panic_level = panic_level + 1
-                    print("lanic level is %d" % panic_level)
-                else:
-                    print("do not panic")
-                    print(time)
-                    print("lanic level is %d" % panic_level)
-                    panic_level = 0
+                    #print("panic level is %d" % panic_level)
 
         total_healthy = len(self.proxies)
         honest_clients = 0
