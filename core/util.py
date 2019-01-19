@@ -1,11 +1,11 @@
 # Default values for trials
-NUM_TRIALS = 200
+NUM_TRIALS = 10
 SEED = 42 # Fixes random state for reproducibility
 SWEEP = 1
 CLIENT_ARRIVAL_RATE = 1.0
-NUM_PROXIES = 100
+NUM_PROXIES = 50
 CENSOR_BOOTSTRAP = 50
-TRACE = False
+TRACE = True
 VICTIM_SET = 20 # fraction of total unblocked proxies
 
 class Event(object):
@@ -27,6 +27,16 @@ class Event(object):
 
     def __str__(self):
         return  self.time.join(self.action.join(proxy_name))
+
+def create_event(time, action, proxies, blocked, proxy, system_health):
+    total_healthy = len(proxies)
+    honest_clients = 0
+    for client in proxy.queue:
+        if (not client.malicious):
+            honest_clients = honest_clients + 1
+    malicious_clients = len(proxy.queue) - honest_clients
+    event = Event(time, action, proxy.name, len(blocked), total_healthy, honest_clients, malicious_clients, system_health)
+    return event
 
 class Client(object):
     """

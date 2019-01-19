@@ -77,7 +77,6 @@ class Distributor(object):
 
         random_proxy_1 = self.proxies[random_index_1]
         random_proxy_2 = self.proxies[random_index_2]
-        # TODO check that the queue is not full otherwise balk, or retry (a bit too complex? more enumeration to track?)
         # Branch process to service the client based on shorter queue (less historical load)
         if (len(random_proxy_1.queue) > len(random_proxy_2.queue)):
             self.env.process(random_proxy_2.service(client))
@@ -104,13 +103,7 @@ class Distributor(object):
                 action = "PROXY_BLOCK"
                 system_health = (1-len(self.blocked)/(len(self.proxies)+len(self.blocked))) * 100
 
-        total_healthy = len(self.proxies)
-        honest_clients = 0
-        for client in proxy.queue:
-            if (not client.malicious):
-                honest_clients = honest_clients + 1
-        malicious_clients = len(proxy.queue) - honest_clients
-        event = util.Event(time, action, proxy.name, len(self.blocked), total_healthy, honest_clients, malicious_clients, system_health)
+        event = util.create_event(time, action, self.proxies, self.blocked, proxy, system_health)
         self.events.append(event)
         if (action == "PROXY_DEATH"):
             self.env.exit()
@@ -146,14 +139,16 @@ class Censor(object):
 
     def enumerate(self, proxy):
         time = self.env.now
+        system_health = 0
         if (proxy not in self.proxies and proxy not in self.blocked):
             self.proxies.append(proxy)
-            event = util.Event(time, "ENUMERATE_PROXY", proxy.name, -1, -1, -1, -1, -1)
-            self.events.append(event)
+            action = "ENUMERATE_PROXY"
         else:
             # Censor deployed a client and received a proxy it already knew about
-            event = util.Event(time, "MISS_ENUMERATE_PROXY", proxy.name, -1, -1, -1, -1, -1)
-            self.events.append(event)
+            action = "MISS_ENUMERATE_PROXY"
+
+        event = util.create_event(time, action, self.proxies, self.blocked, proxy, system_health)
+        self.events.append(event)
 
     def __str__(self):
         return self.proxies + " \n".join(self.blocked)
