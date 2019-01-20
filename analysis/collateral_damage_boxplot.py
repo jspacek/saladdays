@@ -14,11 +14,9 @@ def collateral_damage_boxplot():
 
     seed = util.SEED
     trial = 0
-    df_all_pod = pd.DataFrame(columns=['time','count'])
-    df_all_uni = pd.DataFrame(columns=['time','count'])
-    df_all_sand = pd.DataFrame(columns=['time','count'])
+    df_all_pod = pd.DataFrame()
 
-    for i in range(0, 2):#util.NUM_TRIALS):
+    for i in range(0, util.NUM_TRIALS):
         trial = trial + 1
         seed = seed + 1
         client_arrival_rate = util.CLIENT_ARRIVAL_RATE
@@ -27,33 +25,43 @@ def collateral_damage_boxplot():
         for j in range(0, util.SWEEP):
             # Power of D Choices Analysis
             filename = "analysis/results/PoD_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
-            #print(filename)
             df_pod = pd.read_csv(filename)
-            # Filter file for relevant information
-            df_pod = df_pod[['time','action']]
-            df_pod = df_pod[(df_pod.action == 'ENUMERATE_PROXY')]
-            df_pod = df_pod.round()
-            print(df_pod)
-            #df_pod = df_pod.groupby(df_pod['time']).count()
-            #print(df_pod)
-            # Group the number of proxies enumerated by time (not including misses)
+            df_pod = df_pod[(df_pod.action == 'ENUMERATE_PROXY')].round()
+            df_pod = df_pod[['time']]
             # Each occurrence in the logs counts as 1 proxy enumeration
-            grouped = df_pod.groupby('time').agg(np.size)
-            print(grouped)
-            df_all_pod = df_all_pod.append(grouped)
-            print(df_all_pod)
+            df_pod['count'] = 1
+            df_pod['trial'] = trial
+            #df_pod = df_pod.groupby('time').agg(np.size)
+            #print(type(df_pod))
 
-        # Group the entire set of trials by a time series bin
-        large_grouped = df_all_pod.groupby('time').agg([np.size])
-        #large_grouped = df_all_pod.groupby('time').agg([np.sum, np.mean, np.std])
-        print(grouped.agg([np.sum, np.mean, np.std]))
-        print(df_all_pod)
+            #print(" df pod")
+            print(df_pod)
+            df_all_pod = df_all_pod.append(df_pod, sort=True, ignore_index=True)
 
+    print("all together now")
+    print(df_all_pod)
+
+    # Group each trial in a time series bin array of 10 ms each
+    # TODO max time instead of hard coded value
+    bin_array = np.linspace(0, 200, 21)
+    df_grouped = df_all_pod.groupby(['time','trial']).agg(np.size)
+    print(df_grouped)
+    #bins = pd.cut(df_all_pod['time'], bin_array)
+    #df_all_pod = df_all_pod.groupby(bins)["count"].agg([np.sum, np.mean, np.std])
+    bins = pd.cut(df_grouped['time'], bin_array)
+    df_grouped = df_grouped.groupby(bins)["count"].agg([np.sum, np.mean, np.std])
+
+    print("grouped and all together now")
+    print(df_grouped)
+
+    #df_pod.groupby(bins)["count"].agg(np.sum)
+    #df_all_pod = df_all_pod.groupby(bins)["count"].agg([np.sum, np.mean, np.std])
     # Create graph with all trials and experiments
-    title="Collateral Damage: %d Trials sweep_%d_%d_%d" % (util.NUM_TRIALS, util.SWEEP, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
+    title="Number of proxies exposed over time in %d trials using %d proxies" % (util.NUM_TRIALS, util.NUM_PROXIES)
     plt.title(title)
-    plt.xlabel("Event Time")
-    plt.ylabel("Number of Honest Clients")
+    plt.xlabel("Binned event time (ms)")
+    plt.ylabel("Number of Exposed Proxies")
+
     #plt.scatter(df_all_pod.cum_sum, df_all_pod.time, c="g", edgecolors="black", marker="o", label="Power of D Choices", alpha="0.7")
     #plt.legend(loc='upper left')
 
