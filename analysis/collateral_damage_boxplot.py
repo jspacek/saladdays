@@ -30,38 +30,50 @@ def collateral_damage_boxplot():
             df_pod = df_pod[['time']]
             # Each occurrence in the logs counts as 1 proxy enumeration
             df_pod['count'] = 1
-            df_pod['trial'] = trial
-            #df_pod = df_pod.groupby('time').agg(np.size)
-            #print(type(df_pod))
+            print(df_pod)
+            df_pod = df_pod.groupby([df_pod.time], as_index=False, sort=False).agg(np.size)
+            print(df_pod)
 
-            #print(" df pod")
+            df_pod['trial'] = trial
+            df_pod['count'] = df_pod['count'].cumsum()
             print(df_pod)
             df_all_pod = df_all_pod.append(df_pod, sort=True, ignore_index=True)
 
-    print("all together now")
-    print(df_all_pod)
-
-    # Group each trial in a time series bin array of 10 ms each
-    # TODO max time instead of hard coded value
+    # Group each entry by ms time and trial number
     bin_array = np.linspace(0, 200, 21)
-    df_grouped = df_all_pod.groupby(['time','trial']).agg(np.size)
-    print(df_grouped)
-    #bins = pd.cut(df_all_pod['time'], bin_array)
-    #df_all_pod = df_all_pod.groupby(bins)["count"].agg([np.sum, np.mean, np.std])
-    bins = pd.cut(df_grouped['time'], bin_array)
-    df_grouped = df_grouped.groupby(bins)["count"].agg([np.sum, np.mean, np.std])
+    #df_grouped = df_all_pod.groupby(['time','trial'], as_index=False, sort=False).agg(np.sum)
+    #print("df grouped")
+    #print(df_grouped)
+    bins = pd.cut(df_all_pod['time'], bin_array)
+    print(bins)
+    df_all_pod = df_all_pod.groupby(bins)
+    #["count"]# .agg([np.sum, np.mean, np.max, np.min, np.std])
+    print(len(df_all_pod))
 
-    print("grouped and all together now")
-    print(df_grouped)
+    for name, group in df_all_pod:
+        print(name)
+        print(group)
 
-    #df_pod.groupby(bins)["count"].agg(np.sum)
-    #df_all_pod = df_all_pod.groupby(bins)["count"].agg([np.sum, np.mean, np.std])
     # Create graph with all trials and experiments
     title="Number of proxies exposed over time in %d trials using %d proxies" % (util.NUM_TRIALS, util.NUM_PROXIES)
     plt.title(title)
-    plt.xlabel("Binned event time (ms)")
+    plt.xlabel("Binned event time (10 ms)")
     plt.ylabel("Number of Exposed Proxies")
 
+    # fake up some data
+    spread = np.random.rand(50) * 100
+    center = np.ones(25) * 50
+    flier_high = np.random.rand(50) * 100 + 100
+    flier_low = np.random.rand(50) * -100
+    #print(spread)
+    #print(center)
+    #print(flier_low)
+    #print(flier_high)
+    data = np.concatenate((spread, center, flier_high, flier_low))
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('Basic Plot')
+    ax1.boxplot(data)
+    #plt.show()
     #plt.scatter(df_all_pod.cum_sum, df_all_pod.time, c="g", edgecolors="black", marker="o", label="Power of D Choices", alpha="0.7")
     #plt.legend(loc='upper left')
 
