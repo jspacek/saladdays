@@ -36,46 +36,30 @@ def collateral_damage_boxplot():
 
             df_pod['trial'] = trial
             df_pod['count'] = df_pod['count'].cumsum()
-            print(df_pod)
             df_all_pod = df_all_pod.append(df_pod, sort=True, ignore_index=True)
 
     # Group each entry by ms time and trial number
     bin_array = np.linspace(0, 200, 21)
-    #df_grouped = df_all_pod.groupby(['time','trial'], as_index=False, sort=False).agg(np.sum)
-    #print("df grouped")
-    #print(df_grouped)
     bins = pd.cut(df_all_pod['time'], bin_array)
     print(bins)
-    df_all_pod = df_all_pod.groupby(bins)
-    #["count"]# .agg([np.sum, np.mean, np.max, np.min, np.std])
-    print(len(df_all_pod))
-
-    for name, group in df_all_pod:
-        print(name)
-        print(group)
+    df_all_pod = df_all_pod.groupby([bins])
 
     # Create graph with all trials and experiments
     title="Number of proxies exposed over time in %d trials using %d proxies" % (util.NUM_TRIALS, util.NUM_PROXIES)
-    plt.title(title)
-    plt.xlabel("Binned event time (10 ms)")
-    plt.ylabel("Number of Exposed Proxies")
-
-    # fake up some data
-    spread = np.random.rand(50) * 100
-    center = np.ones(25) * 50
-    flier_high = np.random.rand(50) * 100 + 100
-    flier_low = np.random.rand(50) * -100
-    #print(spread)
-    #print(center)
-    #print(flier_low)
-    #print(flier_high)
-    data = np.concatenate((spread, center, flier_high, flier_low))
     fig1, ax1 = plt.subplots()
-    ax1.set_title('Basic Plot')
-    ax1.boxplot(data)
-    #plt.show()
-    #plt.scatter(df_all_pod.cum_sum, df_all_pod.time, c="g", edgecolors="black", marker="o", label="Power of D Choices", alpha="0.7")
-    #plt.legend(loc='upper left')
+    ax1.set_xlabel("Binned event time (10 ms)")
+    ax1.set_ylabel("Number of Exposed Proxies")
+    ax1.set_title(title)
+    all = []
+    # Select the maximum cumulative sum in each trial for each time slice
+    for name, bin in df_all_pod:
+        max_list = bin.groupby(['trial'], as_index=False, sort=False)['count'].max()
+        max = max_list['count'].tolist()
+        print(max)
+        all.append(max)
+
+    ax1.boxplot(all)
+    plt.show()
 
 if __name__ == '__main__':
     collateral_damage_boxplot()
