@@ -1,9 +1,9 @@
 # Default values for trials
-NUM_TRIALS = 10
+NUM_TRIALS = 200
 SEED = 42 # Fixes random state for reproducibility
 SWEEP = 1
 CLIENT_ARRIVAL_RATE = 1.0
-NUM_PROXIES = 50
+NUM_PROXIES = 100
 CENSOR_BOOTSTRAP = 50
 TRACE = True
 VICTIM_SET = 20 # fraction of total unblocked proxies
