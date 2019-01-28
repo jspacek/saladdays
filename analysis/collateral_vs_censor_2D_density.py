@@ -50,8 +50,10 @@ def collateral_vs_censor_2D_density():
         axes[i].set_xlabel('Number of Total Exposed Proxies')
         axes[i].set_ylabel('Number of Total Exposed (Honest) Clients')
 
-
-    plt.show()
+    #plt.show()
+    graphnamepng = "analysis/archive/collateral_vs_censor_%d_trials_%d_proxies.png" % (util.NUM_TRIALS, util.NUM_PROXIES)
+    plt.savefig(graphnamepng)
+    #plt.savefig(graphnamesvg, format='svg', dpi=1200)
 
 if __name__ == '__main__':
     collateral_vs_censor_2D_density()

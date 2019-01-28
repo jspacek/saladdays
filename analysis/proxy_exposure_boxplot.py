@@ -105,7 +105,9 @@ def proxy_exposure_boxplot():
         ax.margins(0)
         i = i + 1
 
-    plt.show()
-
+    #plt.show()
+    graphnamepng = "analysis/archive/proxy_boxplot_%d_trials_%d_proxies.png" % (util.NUM_TRIALS, util.NUM_PROXIES)
+    plt.savefig(graphnamepng)
+    
 if __name__ == '__main__':
     proxy_exposure_boxplot()
