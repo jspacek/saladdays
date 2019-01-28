@@ -5,7 +5,6 @@ import matplotlib.patches as mpatches
 import sys
 sys.path.append('.')
 from core import util
-from simulation import simulate_PoD
 
 def proxy_exposure_boxplot():
     """
