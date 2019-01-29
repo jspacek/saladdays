@@ -34,11 +34,16 @@ def client_arrival(env, name, distributor, censor, trace):
     # (TODO this should instead be linked to the P of censor deploying malicious clients)
     malicious = random.choice([True, False])
     client = util.Client(name, malicious)
+    # this must be a new copy
     proxy = distributor.assign(client)
 
-    # Contact censor if the client is malicious
+    # Contact censor if the client is malicious, otherwise record client exposure
+    # if the proxy is already enumerated
     if (malicious):
         censor.enumerate(proxy)
+    elif (proxy in censor.proxies):
+        event = util.create_event(arrival, "EXPOSE_CLIENT", distributor.proxies, distributor.blocked, proxy, 0)
+        distributor.add_event(event)
 
 class Distributor(object):
     """
@@ -66,6 +71,9 @@ class Distributor(object):
             self.proxies.append(proxy)
             if (self.trace):
                 print("%7.4f New Proxy %s" % (creation, name))
+
+    def add_event(self, event):
+        self.events.append(event)
 
     def assign(self, client):
         assigned = self.env.now
@@ -160,8 +168,6 @@ class Censor(object):
             if (len(self.proxies) > 0):
                 self.proxies.sort(key=lambda p: len(p.queue), reverse=True)
                 block_proxy = self.proxies[0]
-                #print(len(block_proxy.queue))
-                #print(len(self.proxies[-1].queue))
                 block_proxy.block()
                 self.blocked.append(block_proxy)
                 self.proxies.remove(block_proxy)
