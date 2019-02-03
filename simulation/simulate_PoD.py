@@ -31,7 +31,7 @@ def client_arrival(env, name, distributor, censor, trace):
     # (TODO this should instead be linked to the P of censor deploying malicious clients)
     malicious = random.choice([True, False])
     client = util.Client(name, malicious)
-    proxy = distributor.assign(client)
+    proxy = distributor.assign(client, censor)
 
     # Contact censor if the client is malicious, otherwise record client exposure
     # if the proxy is already enumerated
@@ -71,13 +71,26 @@ class Distributor(object):
     def add_event(self, event):
         self.events.append(event)
 
-    def assign(self, client):
+    def assign(self, client, censor):
         assigned = self.env.now
-
-        if (len(self.proxies) == 0):
+        print(assigned)
+        # Stop the experiment if there are no more unexposed or unblocked proxies
+        if (util.CENSOR_BLOCK and len(self.proxies) == 0):
             if (self.trace):
-                print("NO MORE PROXIES")
+                print("NO MORE UNBLOCKED PROXIES")
             self.env.exit()
+        elif (len(censor.proxies) == util.NUM_PROXIES):
+            if (self.trace):
+                print("NO MORE UNEXPOSED PROXIES")
+            self.env.exit()
+        print("censor has %d proxies" % len(censor.proxies))
+        print(len(censor.proxies))
+        if (len(censor.proxies) == (util.NUM_PROXIES/2)):
+           event = util.create_simple_event(assigned, "HALFWAY", self.proxies, censor.proxies)
+           self.events.append(event)
+        if (len(censor.proxies) == (util.NUM_PROXIES/4)):
+           event = util.create_simple_event(assigned, "QUARTER", self.proxies, censor.proxies)
+           self.events.append(event)
         # Randomly select two proxies from the list to assign to the client
         random_index_1 = random.randint(0,len(self.proxies)-1)
         random_index_2 = random.randint(0,len(self.proxies)-1)
@@ -126,7 +139,8 @@ class Censor(object):
         self.blocked = blocked
         self.events = events
         self.bootstrap = bootstrap
-        env.process(self._block())
+        if (util.CENSOR_BLOCK):
+            env.process(self._block())
 
     def _block(self):
         yield self.env.timeout(self.bootstrap)
@@ -164,9 +178,9 @@ def run(seed, client_arrival_rate, num_proxies, censor_bootstrap, trace):
 
     distributor = Distributor(env, [], [], [], num_proxies, trace)
     censor = Censor(env, [], [], [], censor_bootstrap)
-    env.process(generate_clients(env, client_arrival_rate, distributor, censor, trace))
 
-    env.run() # run until system is dead (no more unblocked proxies)
+    env.process(generate_clients(env, client_arrival_rate, distributor, censor, trace))
+    env.run() # run until system is dead (all proxies enumerated)
 
     return distributor.events + censor.events
 

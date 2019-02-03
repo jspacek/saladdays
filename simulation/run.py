@@ -6,7 +6,7 @@ sys.path.append('.')
 from core import util
 import simulate_PoD
 import simulate_uniform
-import simulate_sandwich
+import simulate_teeter
 
 # Global parameters used for sweeping
 client_arrival_rate = 0
@@ -56,18 +56,17 @@ def run():
         set_defaults()
         seed = seed + trial # PRNG new sequence for new trial
 
-        # Client arrival rate sweep for sandwich
+        # Client arrival rate sweep for teeter algorithm
         for j in range(0, util.SWEEP):
-            events_sand = simulate_sandwich.run(seed, client_arrival_rate, util.NUM_PROXIES, censor_bootstrap, util.TRACE)
-            events_sand_df = pd.DataFrame([vars(event) for event in events_sand])
-            events_sand_df = events_sand_df[['time','action','proxy_name','honest_clients','malicious_clients','system_health','total_blocked','total_healthy']]
+            events_teeter = simulate_teeter.run(seed, client_arrival_rate, util.NUM_PROXIES, censor_bootstrap, util.TRACE)
+            events_teeter_df = pd.DataFrame([vars(event) for event in events_teeter])
+            events_teeter_df = events_teeter_df[['time','action','proxy_name','honest_clients','malicious_clients','system_health','total_blocked','total_healthy']]
 
             if (util.TRACE):
                 print(events_pod_df)
-            filename = "analysis/results/Sandwich_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
-            events_sand_df.to_csv(filename)
+            filename = "analysis/results/Teeter_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
+            events_teeter_df.to_csv(filename)
             client_arrival_rate = client_arrival_rate + 1
-
 
 def set_defaults():
     global seed
