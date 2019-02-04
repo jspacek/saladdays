@@ -1,5 +1,5 @@
 # Default values for trials
-NUM_TRIALS = 20
+NUM_TRIALS = 200
 SEED = 42 # Fixes random state for reproducibility
 SWEEP = 1
 CLIENT_ARRIVAL_RATE = 1.0
@@ -8,14 +8,13 @@ CENSOR_BOOTSTRAP = 50
 TRACE = False
 VICTIM_LIST = 20 # fraction of proxies sorted by maximum load
 CENSOR_BLOCK = False # flag to control blocking on/off
-SLIDING_WINDOW_INIT = 0 # where to start the sliding window of the teeter algorithm
-
+SLIDING_WINDOW_INCREMENT = 5 # number of assignments before window slides
 class Event(object):
     """
     An event is recorded when a proxy is blocked
     A collection of static events is used for statistics
     """
-    def __init__(self, time, action, proxy_name, total_blocked, total_healthy,
+    def __init__(self, time, action, proxy_name, total_blocked  , total_healthy,
         honest_clients, malicious_clients, system_health):
 
         self.time = time
@@ -40,9 +39,10 @@ def create_event(time, action, proxies, blocked_or_enum, proxy, system_health):
     event = Event(time, action, proxy.name, len(blocked_or_enum), total_healthy, honest_clients, malicious_clients, system_health)
     return event
 
-def create_simple_event(time, action, proxies, blocked_or_enum):
-    total_healthy = len(proxies) - len(blocked_or_enum)
-    event = Event(time, action, "", len(blocked_or_enum), total_healthy, 0, 0, 0)
+def create_relative_event(distributor_time, action, distributor_proxies, censor_proxies, total_honest_clients, total_malicious_clients):
+    total_enum = len(censor_proxies)
+    total_healthy = len(distributor_proxies) - total_enum
+    event = Event(distributor_time, action, "", total_enum, total_healthy, total_honest_clients, total_malicious_clients, 0)
     return event
 
 class Client(object):

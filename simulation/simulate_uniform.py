@@ -54,6 +54,10 @@ class Distributor(object):
         self.events = events
         self.num_proxies = num_proxies
         self.trace = trace
+        self.distributor_time = 0
+        self.total_honest_clients = 0
+        self.total_malicious_clients = 0
+        self.next_q = 1
         self._bootstrap()
 
     def _bootstrap(self):
@@ -73,33 +77,40 @@ class Distributor(object):
 
     def assign(self, client, censor):
         assigned = self.env.now
-        print(assigned)
+        self.distributor_time = self.distributor_time + 1
+        if (client.malicious):
+            self.total_malicious_clients = self.total_malicious_clients + 1
+        else:
+            self.total_honest_clients = self.total_honest_clients + 1
+        print(self.distributor_time)
+        print("censor has %d proxies %d malicious %d honest " % (len(censor.proxies), self.total_malicious_clients, self.total_honest_clients))
+        self.log_assign(censor)
 
+        # Randomly select one proxy from the list to assign to the client
+        random_index = random.randint(0,len(self.proxies)-1)
+        random_proxy = self.proxies[random_index]
+        # Branch process to service the client based on shorter queue (less historical load)
+        self.env.process(random_proxy.service(client))
+        return random_proxy
+
+    def log_assign(self, censor):
         # Stop the experiment if there are no more unexposed or unblocked proxies
         if (util.CENSOR_BLOCK and len(self.proxies) == 0):
             if (self.trace):
                 print("NO MORE UNBLOCKED PROXIES")
             self.env.exit()
-        elif (len(censor.proxies) == util.NUM_PROXIES):
+        elif (len(censor.proxies) == len(self.proxies)):
             if (self.trace):
                 print("NO MORE UNEXPOSED PROXIES")
+            event = util.create_relative_event(self.distributor_time, "CENSOR_TRACK", self.proxies, censor.proxies, self.total_honest_clients, self.total_malicious_clients)
+            self.events.append(event)
             self.env.exit()
-        print("censor has %d proxies" % len(censor.proxies))
-        print(len(censor.proxies))
-        if (len(censor.proxies) == (util.NUM_PROXIES/2)):
-           event = util.create_simple_event(assigned, "HALFWAY", self.proxies, censor.proxies)
-           self.events.append(event)
-        if (len(censor.proxies) == (util.NUM_PROXIES/4)):
-           event = util.create_simple_event(assigned, "QUARTER", self.proxies, censor.proxies)
-           self.events.append(event)
 
-        # Randomly select one proxy from the list to assign to the client
-        random_index = random.randint(0,len(self.proxies)-1)
-
-        random_proxy = self.proxies[random_index]
-        # Branch process to service the client based on shorter queue (less historical load)
-        self.env.process(random_proxy.service(client))
-        return random_proxy
+        # log every 10th step in enumerated proxies
+        if (len(censor.proxies) == self.next_q*(util.NUM_PROXIES/10)):
+           event = util.create_relative_event(self.distributor_time, "CENSOR_TRACK", self.proxies, censor.proxies, self.total_honest_clients, self.total_malicious_clients)
+           self.events.append(event)
+           self.next_q = self.next_q + 1
 
     def notify_block(self, proxy):
         time = self.env.now

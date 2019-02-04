@@ -62,9 +62,10 @@ def run():
             events_teeter_df = pd.DataFrame([vars(event) for event in events_teeter])
             events_teeter_df = events_teeter_df[['time','action','proxy_name','honest_clients','malicious_clients','system_health','total_blocked','total_healthy']]
 
+            # TODO sweeping victim list size
             if (util.TRACE):
                 print(events_pod_df)
-            filename = "analysis/results/Teeter_trial_%d_%d_sweep_%d_%d_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP)
+            filename = "analysis/results/Teeter_trial_%d_%d_sweep_%d_%d_%d_victim_%d.csv" % (trial, seed, client_arrival_rate, util.NUM_PROXIES, util.CENSOR_BOOTSTRAP, util.VICTIM_LIST)
             events_teeter_df.to_csv(filename)
             client_arrival_rate = client_arrival_rate + 1
 

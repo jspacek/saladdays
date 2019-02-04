@@ -29,9 +29,10 @@ def client_arrival(env, name, distributor, censor, trace):
     if (trace):
         print("%7.4f New Client %s" % (arrival, name))
 
-    # Determine maliciousness of client
+    # TODO merged lambda rates for both honest and malicious to determine maliciousness of client
     malicious = random.choice([True, False])
     client = util.Client(name, malicious)
+
     # Call the distributor to assign a Proxy to the Client as a separate process
     proxy = distributor.assign(client, censor)
 
@@ -58,6 +59,10 @@ class Distributor(object):
         self.trace = trace
         self.sliding_window = sliding_window
         self.assignment_count = 0
+        self.distributor_time = 0
+        self.total_honest_clients = 0
+        self.total_malicious_clients = 0
+        self.next_q = 1
         self._bootstrap()
 
     def _bootstrap(self):
@@ -77,71 +82,63 @@ class Distributor(object):
 
     def assign(self, client, censor):
         assigned = self.env.now
-        print(assigned)
-        # Stop the experiment if there are no more unexposed or unblocked proxies
-        if (util.CENSOR_BLOCK and len(self.proxies) == 0):
-            if (self.trace):
-                print("NO MORE UNBLOCKED PROXIES")
-            self.env.exit()
-        elif (len(censor.proxies) == util.NUM_PROXIES):
-            if (self.trace):
-                print("NO MORE UNEXPOSED PROXIES")
-            action = "UNEXPOSED_DEATH"
-            system_health = (1-len(censor.proxies)/(len(self.proxies)+len(censor.proxies))) * 100
-            event = util.create_event(assigned, action, self.proxies, censor.proxies, censor.proxies[0], system_health)
-            self.events.append(event)
-            self.env.exit()
-        print("censor has %d proxies" % len(censor.proxies))
-        print(len(censor.proxies))
-        if (len(censor.proxies) == (util.NUM_PROXIES/2)):
-           event = util.create_simple_event(assigned, "HALFWAY", self.proxies, censor.proxies)
-           self.events.append(event)
-        if (len(censor.proxies) == (util.NUM_PROXIES/4)):
-           event = util.create_simple_event(assigned, "QUARTER", self.proxies, censor.proxies)
-           self.events.append(event)
+        self.distributor_time = self.distributor_time + 1
+        if (client.malicious):
+            self.total_malicious_clients = self.total_malicious_clients + 1
+        else:
+            self.total_honest_clients = self.total_honest_clients + 1
 
+        print(self.distributor_time)
+        print("censor has %d proxies %d malicious %d honest " % (len(censor.proxies), self.total_malicious_clients, self.total_honest_clients))
+
+        self.log_assign(censor)
+        return self.teetering_algo(client)
+
+    def teetering_algo(self, client):
         # Perform sort to order list by largest number of assignments (maximum load)
         sorted_proxies = sorted(self.proxies, key=lambda p: len(p.queue), reverse=True)
         victim_proxies = []
         # Size of the victim list is a fraction of the total proxies
         victim_size = (int)(len(self.proxies)/util.VICTIM_LIST)
-        print("victim size")
-        print(victim_size)
         if (victim_size > 0):
             # Choose randomly from the top most heavily loaded proxies
             # Selecting only from a fraction of the victim list
             # Note: the selection is random to avoid predictability in the selection
-            i = self.sliding_window
-            j = self.sliding_window + victim_size - 1
-            if (j >= len(self.proxies)):
-                j = len(self.proxies) -1
-            print("sliding window i= %d j=%d" % (i, j))
-
-            if (i == j):
-                print("last proxy at index %d" % j)
-                print(" It has %d clients " % len(self.proxies[j].queue))
-                self.sliding_window = util.SLIDING_WINDOW_INIT
-                return self.proxies[j]
-            else:
-                random_index = random.randint(i, j)
-                random_proxy_victim = self.proxies[random_index]
-                self.env.process(random_proxy_victim.service(client))
-                # After some x assignments TODO replace hard code, slide the window
-                # maybe it should be related to the probability of malicious clients in the system
-                self.assignment_count = self.assignment_count + 1
-                if (self.assignment_count % 5 == 0):
-                    self.sliding_window = self.sliding_window + 1
-                    print("Change sliding window %d " % self.sliding_window)
-
-                print("Proxies in list ")
-                for index in (range(i,j)):
-                    print(" %s " % self.proxies[index].name)
-                print(" Selected proxy is %s " % random_proxy_victim.name)
-                print(" It has %d clients " % len(random_proxy_victim.queue))
-                return random_proxy_victim
+            num_proxies = len(self.proxies)
+            i = self.sliding_window % num_proxies
+            j = (self.sliding_window + victim_size - 1) % num_proxies
+            random_interval = random.randint(0, (victim_size-1))
+            random_index = (random_interval + i) % num_proxies
+            random_proxy_victim = self.proxies[random_index]
+            print("sliding window i= %d j=%d selected %d has %d clients" % (i, j, random_index, len(random_proxy_victim.queue)))
+            self.env.process(random_proxy_victim.service(client))
+            # After some x assignments, slide the window
+            self.assignment_count = self.assignment_count + 1
+            if (self.assignment_count % util.SLIDING_WINDOW_INCREMENT == 0):
+                self.sliding_window = self.sliding_window + 1
+            return random_proxy_victim
         else:
             print("victim window too small")
             return self.proxies[0]
+
+    def log_assign(self, censor):
+        # Stop the experiment if there are no more unexposed or unblocked proxies
+        if (util.CENSOR_BLOCK and len(self.proxies) == 0):
+            if (self.trace):
+                print("NO MORE UNBLOCKED PROXIES")
+            self.env.exit()
+        elif (len(censor.proxies) == len(self.proxies)):
+            if (self.trace):
+                print("NO MORE UNEXPOSED PROXIES")
+            event = util.create_relative_event(self.distributor_time, "CENSOR_TRACK", self.proxies, censor.proxies, self.total_honest_clients, self.total_malicious_clients)
+            self.events.append(event)
+            self.env.exit()
+
+        # log every 10th step in enumerated proxies
+        if (len(censor.proxies) == self.next_q*(util.NUM_PROXIES/10)):
+           event = util.create_relative_event(self.distributor_time, "CENSOR_TRACK", self.proxies, censor.proxies, self.total_honest_clients, self.total_malicious_clients)
+           self.events.append(event)
+           self.next_q = self.next_q + 1
 
     def notify_block(self, proxy):
         time = self.env.now
@@ -206,6 +203,7 @@ class Censor(object):
         system_health = 0
         if (proxy not in self.proxies and proxy not in self.blocked):
             self.proxies.append(proxy)
+            print("size of proxies %d " % len(self.proxies))
             action = "ENUMERATE_PROXY"
         else:
             # Censor deployed a client and received a proxy it already knew about
@@ -221,7 +219,7 @@ def run(seed, client_arrival_rate, num_proxies, censor_bootstrap, trace):
     random.seed(seed)
     env = simpy.Environment()
 
-    distributor = Distributor(env, [], [], [], num_proxies, trace, util.SLIDING_WINDOW_INIT)
+    distributor = Distributor(env, [], [], [], num_proxies, trace, 0)
     censor = Censor(env, [], [], [], censor_bootstrap)
 
     env.process(generate_clients(env, client_arrival_rate, distributor, censor, trace))
