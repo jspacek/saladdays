@@ -8,12 +8,12 @@ import math
  Batch the distribution in groups of k, distribute in non-overlapping batches
 """
 
-trials = 10000
+trials = 10
 n = 16
-seed = 42 # for reproducibility
+seed = 43 # for reproducibility
 window_size = 4
 window_increment = window_size # to simpify, there are *no overlapping batches*
-window_repeat = 1 # higher repeats is making coupons "rarer"
+window_repeat = 5 # higher repeats is making coupons "rarer"
 # better results with lower window_increment and higher repeat (just makes batches used more frequently)
 # with each guess repeat from the same set, the other coupons become rarer and rarer (and also lightly loaded)
 proxy = collections.namedtuple('proxy', 'index load num_in_draw trial')
@@ -28,6 +28,7 @@ for current_trial in range(0,trials):
     i = 0
     j = 0 + window_size
     current_repeat = 1
+    miss = 0
 
     while (len(known_proxies) < n):
 
@@ -39,8 +40,7 @@ for current_trial in range(0,trials):
             known_proxies.append(random_index)
 
         df.at[random_index,'load'] = df.at[random_index,'load'] + 1
-        #print("should have updated %d " % random_index)
-        #print(df)
+
         for window in range(0, window_size):
             index = (window + i) % n
             df.at[index,'num_in_draw'] = df.at[index,'num_in_draw'] + 1
@@ -51,6 +51,7 @@ for current_trial in range(0,trials):
             #print("repeat = %d " % current_repeat)
             i = (i + window_increment) % n
             j = (j + window_increment) % n
+
             current_repeat = 1
 
     df_all = df_all.append(df, ignore_index=True)

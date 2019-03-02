@@ -104,6 +104,10 @@ class Distributor(object):
                 print("NO MORE UNEXPOSED PROXIES")
             event = util.create_relative_event(self.distributor_time, "CENSOR_TRACK", self.proxies, censor.proxies, self.total_honest_clients, self.total_malicious_clients)
             self.events.append(event)
+            # Final log of all proxies and clients before exiting
+            for i in range(0, len(censor.proxies)):
+                event = util.create_event(self.distributor_time, "PROXY_TRACK", self.proxies, censor.proxies, censor.proxies[i],0)
+                self.events.append(event)
             self.env.exit()
 
         # log every 10th step in enumerated proxies

@@ -1,5 +1,5 @@
 # Default values for trials
-NUM_TRIALS = 200
+NUM_TRIALS = 20
 SEED = 42 # Fixes random state for reproducibility
 SWEEP = 1
 CLIENT_ARRIVAL_RATE = 1.0

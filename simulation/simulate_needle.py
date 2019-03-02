@@ -6,7 +6,9 @@ sys.path.append('.')
 from core import util
 
 # M/M/c/k Jackson network queue model
-# Assign clients to proxies using power of 2 choices (aka Power of D Choices)
+# The Needle algorithm assigns clients to proxies using a victim list
+# that is ordered by the total number of clients assigned historically
+# The victim list is a sliding window that moves along the total list.
 
 queue_size = 10
 service_time = 1.0
@@ -26,11 +28,11 @@ def client_arrival(env, name, distributor, censor, trace):
     if (trace):
         print("%7.4f New Client %s" % (arrival, name))
 
-    # call the distributor to assign a Proxy to the Client as a separate process
-    # Determine maliciousness of client uniform randomly
-    # (TODO this should instead be linked to the P of censor deploying malicious clients)
+    # TODO merged lambda rates for both honest and malicious to determine maliciousness of client
     malicious = random.choice([True, False])
     client = util.Client(name, malicious)
+
+    # Call the distributor to assign a Proxy to the Client as a separate process
     proxy = distributor.assign(client, censor)
 
     # Contact censor if the client is malicious, otherwise record client exposure
@@ -47,13 +49,15 @@ class Distributor(object):
     It maintains a list of all proxies in the system and distributes proxies
     to clients based on uniform random selection.
     """
-    def __init__(self, env, proxies, blocked, events, num_proxies, trace):
+    def __init__(self, env, proxies, blocked, events, num_proxies, trace, sliding_window):
         self.env = env
         self.proxies = proxies
         self.blocked = blocked
         self.events = events
         self.num_proxies = num_proxies
         self.trace = trace
+        self.sliding_window = sliding_window
+        self.assignment_count = 0
         self.distributor_time = 0
         self.total_honest_clients = 0
         self.total_malicious_clients = 0
@@ -82,23 +86,42 @@ class Distributor(object):
             self.total_malicious_clients = self.total_malicious_clients + 1
         else:
             self.total_honest_clients = self.total_honest_clients + 1
+
         print(self.distributor_time)
         print("censor has %d proxies %d malicious %d honest " % (len(censor.proxies), self.total_malicious_clients, self.total_honest_clients))
+
         self.log_assign(censor)
+        return self.teetering_algo(client)
 
-        # Randomly select two proxies from the list to assign to the client
-        random_index_1 = random.randint(0,len(self.proxies)-1)
-        random_index_2 = random.randint(0,len(self.proxies)-1)
+    def teetering_algo(self, client):
+        # Perform sort to order list by largest number of assignments (maximum load)
+        # TODO shoud this be sorted or no? I believe it is only sorted implicitly because all of the proxies are instantiated at the same time
 
-        random_proxy_1 = self.proxies[random_index_1]
-        random_proxy_2 = self.proxies[random_index_2]
-        # Branch process to service the client based on shorter queue (less historical load)
-        if (len(random_proxy_1.queue) > len(random_proxy_2.queue)):
-            self.env.process(random_proxy_2.service(client))
-            return random_proxy_2
+        #sorted_proxies = sorted(self.proxies, key=lambda p: len(p.queue), reverse=True)
+        victim_proxies = []
+        # Size of the victim list is a fraction of the total proxies
+        victim_size = (int)(len(self.proxies)/util.VICTIM_LIST)
+        if (victim_size > 0):
+            # Choose randomly from the top most heavily loaded proxies
+            # Selecting only from a fraction of the victim list
+            # Note: the selection is random to avoid predictability in the selection
+            num_proxies = len(self.proxies)
+            i = self.sliding_window % num_proxies
+            j = (self.sliding_window + victim_size - 1) % num_proxies
+            random_interval = random.randint(0, (victim_size-1))
+            random_index = (random_interval + i) % num_proxies
+            random_proxy_victim = self.proxies[random_index]
+            #random_proxy_victim = sorted_proxies[random_index]
+            print("sliding window i= %d j=%d selected %d has %d clients" % (i, j, random_index, len(random_proxy_victim.queue)))
+            self.env.process(random_proxy_victim.service(client))
+            # After some x assignments, slide the window
+            self.assignment_count = self.assignment_count + 1
+            if (self.assignment_count % util.SLIDING_WINDOW_INCREMENT == 0):
+                self.sliding_window = self.sliding_window + 1
+            return random_proxy_victim
         else:
-            self.env.process(random_proxy_1.service(client))
-            return random_proxy_1
+            print("victim window too small")
+            return self.proxies[0]
 
     def log_assign(self, censor):
         # Stop the experiment if there are no more unexposed or unblocked proxies
@@ -140,6 +163,13 @@ class Distributor(object):
             else:
                 action = "PROXY_BLOCK"
                 system_health = (1-len(self.blocked)/(len(self.proxies)+len(self.blocked))) * 100
+                global panic_level
+                # Note: this strategy operates based on the blocking behaviour,
+                # the distributor won't know how many proxies are enumerated (exposed)
+                # TODO: how does this affect the analysis if we aren't analyzing block rate, eg. not a time series?
+                if (len(self.blocked) > len(self.proxies)):
+                    panic_level = panic_level + 1
+                    #print("panic level is %d" % panic_level)
 
         event = util.create_event(time, action, self.proxies, self.blocked, proxy, system_health)
         self.events.append(event)
@@ -179,6 +209,7 @@ class Censor(object):
         system_health = 0
         if (proxy not in self.proxies and proxy not in self.blocked):
             self.proxies.append(proxy)
+            print("size of proxies %d " % len(self.proxies))
             action = "ENUMERATE_PROXY"
         else:
             # Censor deployed a client and received a proxy it already knew about
@@ -194,7 +225,7 @@ def run(seed, client_arrival_rate, num_proxies, censor_bootstrap, trace):
     random.seed(seed)
     env = simpy.Environment()
 
-    distributor = Distributor(env, [], [], [], num_proxies, trace)
+    distributor = Distributor(env, [], [], [], num_proxies, trace, 0)
     censor = Censor(env, [], [], [], censor_bootstrap)
 
     env.process(generate_clients(env, client_arrival_rate, distributor, censor, trace))
