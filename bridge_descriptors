@@ -1,0 +1,46 @@
+extra-info DidynamiaSaltfoot '72C2F0AE1C14F40ED37ED5F5434B64711A658E46'
+published 2019-03-14 08:28:47
+write-history 2019-03-14 08:28:47 (900 s) 3188736,2226176,2866176
+read-history 2019-03-14 08:28:47 (900 s) 3891200,2483200,2698240
+dirreq-write-history 2019-03-14 08:28:47 (900 s) 1024,0,2048
+dirreq-read-history 2019-03-14 08:28:47 (900 s) 0,0,0
+geoip-db-digest 144CCED0FE703BD4A13688626C0A233EF523439F
+geoip6-db-digest C73CD60719A13C7A1E86A199CC657099351ACE43
+dirreq-stats-end 2019-03-14 08:28:47 (86400 s)
+dirreq-v3-ips
+dirreq-v3-reqs
+dirreq-v3-resp ok=16,not-enough-sigs=0,unavailable=0,not-found=0,not-modified=0,busy=0
+dirreq-v3-direct-dl complete=0,timeout=0,running=0
+dirreq-v3-tunneled-dl complete=12,timeout=0,running=0
+transport obfs3 48.220.123.89:63754
+transport obfs2 48.220.123.89:63755
+transport scramblesuit 48.220.123.89:63756 password='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+transport obfs4 48.220.123.89:63757 iat-mode='',node-id=47aea5b60007d196b168bdb776497ae5235b445d,public-key=367467f43d580c3c07040a78c7890ae4262dad4778878f9a49d5f652c81689a5
+bridge-stats-end 2019-03-14 08:28:47 (86400 s)
+bridge-ips ca=8
+bridge-ip-versions v4=8,v6=0
+bridge-ip-transports <OR>=8
+router-signature
+extra-info AssertrixTaurocol '72C2F0AE1C14F40ED37ED5F5434B64711A658E46'
+published 2019-03-15 01:21:50
+write-history 2019-03-15 01:21:50 (900 s) 3188736,2226176,2866176
+read-history 2019-03-15 01:21:50 (900 s) 3891200,2483200,2698240
+dirreq-write-history 2019-03-15 01:21:50 (900 s) 1024,0,2048
+dirreq-read-history 2019-03-15 01:21:50 (900 s) 0,0,0
+geoip-db-digest BC9F46DAFFE209C9E09B0CDED5B4B026C5D29266
+geoip6-db-digest D65C5037CD2B0E03EFA56D0F207E86ACB54985F0
+dirreq-stats-end 2019-03-15 01:21:50 (86400 s)
+dirreq-v3-ips
+dirreq-v3-reqs
+dirreq-v3-resp ok=16,not-enough-sigs=0,unavailable=0,not-found=0,not-modified=0,busy=0
+dirreq-v3-direct-dl complete=0,timeout=0,running=0
+dirreq-v3-tunneled-dl complete=12,timeout=0,running=0
+transport obfs3 20.231.5.203:46661
+transport obfs2 20.231.5.203:46662
+transport scramblesuit 20.231.5.203:46663 password='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+transport obfs4 20.231.5.203:46664 iat-mode='',node-id=0f2bf6d5e1a0209d19f8f6e7d08b3e2d9cf4c5ab,public-key=d81bfb50e59a9abbe66f6ae0c6b45c7b9c0bc6eead2cf982118ac4d62b6ffeda
+bridge-stats-end 2019-03-15 01:21:50 (86400 s)
+bridge-ips ca=8
+bridge-ip-versions v4=8,v6=0
+bridge-ip-transports <OR>=8
+router-signature
