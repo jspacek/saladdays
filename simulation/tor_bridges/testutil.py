@@ -208,10 +208,10 @@ def generateFakeBridges(n=500):
         bridge.transports = transports
         bridge.orAddresses = addrs
         bridges.append(bridge)
+        #print("FAKE BRIDGE")
+        #print(addr)
 
     _FAKE_BRIDGES = bridges
-    #print("GOT BRIGESSSS")
-    #print(bridges)
     return bridges
 
 @implementer(IBridge)

@@ -7,8 +7,8 @@ import math
  Assumes the censor owns 100% of the accounts acting as the coupon collector
 """
 
-trials = 10
-n = 16
+trials = 3
+n = 80
 seed = 43 # for reproducibility
 proxy = collections.namedtuple('proxy', 'index load num_in_draw trial')
 df_all = pd.DataFrame(columns=proxy._fields)

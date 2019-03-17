@@ -12,13 +12,106 @@
 
 
 """Classes for creating bridge distribution systems.
+
+.. inheritance-diagram:: Distributor
+    :parts: 1
+
+..
+    (These are design notes.  Please ignore.)
+
+    DEFINITELY
+    ----------
+
+    Distributor {
+      name property
+      bridgesPerResponse() property      FORMERLY getNumBridgesPerAnswer()
+      hashring struct     FORMERLY KNOWN AS splitter
+          rotate bool
+          rotationGroups
+          rotationSchedule
+          key str
+          subrings list
+              - Subring
+          clear()
+          export()        FORMERLY KNOWN AS dumpAssignments()
+          insert()
+      getBridges()        FORMERLY KNOWN AS getBridgesForEmail() and getBridgesForIP()
+      handleBridgeRequest()
+      handleIncomingBridges()
+    }
+
+    DistributionContext {  # should go in bridgedb.py
+        distributors {
+            name: DistributorContext
+        }
+    }
+
+    DistributorContext {   # should go in bridgedb.py
+        name str
+        allocationPercentage property
+        publicKey
+    }
+
+    Hashring {
+        assignBridgesToSubrings()   FORMERLY bridgedb.filters.assignBridgesToSubring()
+            + filters bridges uniformly into subrings
+        clear() / __del__()
+        isEmpty property
+    }
+
+    MAYBE
+    -----
+    mapClientToHashring() FORMERLY KNOWN AS areaMapper AND
+    mapClientToSubhashring()
+    authenticateToBridgeDB()
+    maintainACL() for proxylists
+
+    - need a way for BridgeDB to decide global parameters to be followed
+      by all distributors.
+          - BridgeAnswerParameters?
+            maybe call it DistributionContext?
+            then have DistributorContexts?
+
+      requiredFlags  AnswerParameters?
+      requireFlag()
+      requiredPorts
+      requirePorts()
+
+      THINGS NEEDED FOR COMMUNICATION BETWEEN DISTRIBUTORS AND BRIDGEDB
+      -----------------------------------------------------------------
+      * distributorCredential (for authenticating to the DB)
+      * metrics?
+          * total clients seen
+          * total clients served
+          - unique clients seen
+          - unique clients served
+          * total requests for TRANSPORT
+          * total times TRANSPORT was served
+
+      THINGS DISTRIBUTORS SHOULD KEEP TRACK OF, BUT NOT REPORT
+      --------------------------------------------------------
+      - approximate bridge bandwidth
+      - approximate bandwidth per client
+      - approximate bridge bandwidth already distributed
+
+      NAMES FOR CHOOSING "GET ME WHATEVER TRANSPORTS"
+      -----------------------------------------------
+      chocolate box, russian roulette
+
+      * How much of a bad idea would it be to store bridges allocated to a
+        distributor as diffs over the last time the Distributor asked?
+
 """
+
+import logging
 import math
 
 from zope import interface
 from zope.interface import Attribute
-from zope.interface import implements
+#from zope.interface import implements
+from zope.interface import implementer
 
+# from bridgedb.hashring import IHashring
 from interfaces import IName
 from interfaces import Named
 
@@ -62,14 +155,12 @@ class IDistribute(IName):
     def getBridges(bridgeRequest):
         """Get bridges based on a client's **bridgeRequest**."""
 
-
+@ implementer(IDistribute)
 class Distributor(Named):
     """A :class:`Distributor` distributes bridges to clients.
 
     Inherit from me to create a new type of ``Distributor``.
     """
-    #implements(IDistribute)
-
     _bridgesPerResponseMin = 1
     _bridgesPerResponseMax = 3
     _hashringLevelMin = 20
@@ -155,7 +246,7 @@ class Distributor(Named):
         try:
             self.hashring.distributor = name
         except AttributeError:
-            logging.debug(("Couldn't set distributor attribute for %s "
+            print(("Couldn't set distributor attribute for %s "
                            "Distributor's hashring." % name))
 
     def bridgesPerResponse(self, hashring=None):
@@ -173,7 +264,7 @@ class Distributor(Named):
         elif self._hashringLevelMax <= len(hashring):
             n = self._bridgesPerResponseMax
 
-        logging.debug("Returning %d bridges from ring of len: %d" %
+        print("Returning %d bridges from ring of len: %d" %
                       (n, len(hashring)))
 
         return n

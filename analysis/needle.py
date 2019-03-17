@@ -8,9 +8,9 @@ import math
  Batch the distribution in groups of k, distribute in non-overlapping batches
 """
 # print results
-f = open("analysis/results_61_70.txt","w+")
-for run in range(61,70):
-    trials = 20
+f = open("analysis/results_70.txt","w+")
+for run in range(70,71):
+    trials = 3
     n = run
     seed = 43 # for reproducibility
     window_size = n

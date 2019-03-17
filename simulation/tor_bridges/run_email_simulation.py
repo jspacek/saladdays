@@ -30,10 +30,9 @@ domainrules = {
 
 def createBridgeRings(key):
     """
-    Create the bridge distributors (only the email and reserved)
+    Create the bridge distributors (only the email)
     """
-    # Create a BridgeSplitter to assign the bridges to the different
-    # distributors.
+    # Create a BridgeSplitter to assign the bridges to the different distributors.
     bridgesplitter_hashring = capitalbridges.BridgeSplitter(b'aQpeOFIj8q20s98awfoiq23rpOIjFaqpEWFoij1X')
     #<class 'capitalbridges.BridgeSplitter'>
     print("Created bridgesplitter_hashring: %r" % bridgesplitter_hashring)
@@ -42,9 +41,6 @@ def createBridgeRings(key):
     ringParams = capitalbridges.BridgeRingParameters(needPorts=[(443, 1)],
                                               needFlags=[("Stable", 1)])
 
-    emailDistributor = None
-    # As appropriate, create an email-based distributor.
-    print("Setting up Email Distributor...")
     emailDistributor = EmailDistributor(key, domainmap, domainrules)
     bridgesplitter_hashring.addRing(emailDistributor.hashring, "email", 2)
 
@@ -57,17 +53,15 @@ def run():
     (bridgesplitter_hashring, emailDistributor) = createBridgeRings(key)
     print("Bridges loaded: %d" % len(bridgesplitter_hashring))
 
-    if emailDistributor is not None:
-        emailDistributor.prepopulateRings() # create default rings
-        bridges = generateFakeBridges()
-        [bridgesplitter_hashring.insert(bridge) for bridge in bridges]
-        print("Bridges loaded: %d" % len(hashring))
-
-    else:
-        logging.warn("No email distributor created!")
+    emailDistributor.prepopulateRings() # create default rings
+    bridges = generateFakeBridges()
+    [bridgesplitter_hashring.insert(bridge) for bridge in bridges]
+    print("Bridges loaded: %d" % len(bridgesplitter_hashring))
 
     # Dump bridge pool assignments to disk.
     #writeAssignments(hashring, state.ASSIGNMENTS_FILE)
+
+    # Make a client request for a bridge
 
 def writeAssignments(hashring, filename):
     """Dump bridge distributor assignments to disk.
@@ -86,11 +80,6 @@ def writeAssignments(hashring, filename):
             hashring.dumpAssignments(fh)
     except IOError:
         logging.info("I/O error while writing assignments to: '%s'" % filename)
-
-def replaceBridgeRings(current, replacement):
-    """Replace the current thing with the new one"""
-    current.hashring = replacement.hashring
-
 
 if __name__ == '__main__':
     run()

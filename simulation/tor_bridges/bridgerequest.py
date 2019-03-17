@@ -18,13 +18,16 @@ requested by a client.
 """
 
 import ipaddr
+import logging
 
 from zope.interface import implementer
 from zope.interface import Attribute
 from zope.interface import Interface
 
 from crypto import getHMACFunc
-from filters import byIPv # only one filter function by IPv4 in this simulation
+from filters import byIPv
+from filters import byNotBlockedIn
+from filters import byTransport
 
 
 class IRequestBridges(Interface):
@@ -160,7 +163,7 @@ class BridgeRequestBase(object):
         # Get an HMAC with the key of the client identifier:
         digest = getHMACFunc(key)(client)
         # Take the lower 8 bytes of the digest and convert to a long:
-        position = long(digest[:8], 16)
+        position = digest[:8], 16
         return position
 
     def isValid(self, valid=None):
@@ -221,7 +224,7 @@ class BridgeRequestBase(object):
         try:
             ptType = self.transports[-1]  # Use the last PT requested
         except IndexError:
-            print("No pluggable transports were requested.")
+            logging.debug("No pluggable transports were requested.")
         return ptType
 
     def generateFilters(self):
@@ -237,37 +240,12 @@ class BridgeRequestBase(object):
 
         if self.notBlockedIn:
             for country in self.notBlockedIn:
-                print("%s %s bridges not blocked in %s..." %
+                logging.info("%s %s bridges not blocked in %s..." %
                              (msg, pt or "vanilla", country))
                 self.addFilter(byNotBlockedIn(country, pt, self.ipVersion))
         elif pt:
-            print("%s %s bridges..." % (msg, pt))
+            logging.info("%s %s bridges..." % (msg, pt))
             self.addFilter(byTransport(pt, self.ipVersion))
         else:
-            print("%s bridges..." % msg)
+            logging.info("%s bridges..." % msg)
             self.addFilter(byIPv(self.ipVersion))
-
-class EmailBridgeRequest(BridgeRequestBase):
-    """We received a request for bridges through the email distributor."""
-
-    def __init__(self):
-        """Process a new bridge request received through the
-        :class:`~bridgedb.distributors.email.distributor.EmailDistributor`.
-        """
-        super(EmailBridgeRequest, self).__init__()
-        self._wantsKey = False
-
-    def wantsKey(self, wantsKey=None):
-        """Get or set whether this bridge request wanted our GnuPG key.
-
-        If called without parameters, this method will return the current
-        state, otherwise (if called with the **wantsKey** parameter set), it
-        will set the current state for whether or not this request wanted our
-        key.
-
-        :param bool wantsKey: If given, set the validity state of this
-            request. Otherwise, get the current state.
-        """
-        if wantsKey is not None:
-            self._wantsKey = bool(wantsKey)
-        return self._wantsKey

@@ -210,8 +210,8 @@ def getKey(filename):
 
 def getHMAC(key, value):
     """Return the HMAC of **value** using the **key**."""
-    h = hmac.new(key.encode("UTF-8"), value.encode("UTF-8"), digestmod=DIGESTMOD)
     #h = hmac.new(key, value, digestmod=DIGESTMOD)
+    h = hmac.new(key, value, digestmod=DIGESTMOD)
 
     return h.digest()
 
@@ -225,6 +225,8 @@ def getHMACFunc(key, hex=True):
     h = hmac.new(key, digestmod=DIGESTMOD)
     def hmac_fn(value):
         h_tmp = h.copy()
+        print("value")
+        print(value)
         h_tmp.update(value)
         if hex:
             return h_tmp.hexdigest()

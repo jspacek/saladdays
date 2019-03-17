@@ -213,7 +213,7 @@ class BridgeRing(object):
             self.isSorted = False
         self.bridges[pos] = bridge
         self.bridgesByID[bridge.identity] = bridge
-        print("Adding %s to %s" % (bridge.address, self.name))
+        #print("Adding ID %s IP %s to %s" % (bridge.identity, bridge.address, self.name))
 
     def _sort(self):
         """Helper: put the keys in sorted order."""
@@ -332,9 +332,10 @@ class BridgeRing(object):
             if k not in keys:
                 keys.append(k)
             else:
-                print(
-                    "Got duplicate bridge %r in main hashring for position %r."
-                    % (logSafely(k.encode('hex')), pos.encode('hex')))
+                print("Got duplicate bridge %r in main hashring for position %r.")
+                #print((k.encode('hex')), pos.encode('hex'))
+                print(k, pos)
+
         keys.sort()
 
         if filterBySubnet:
@@ -484,13 +485,6 @@ class BridgeSplitter(object):
         validRings = self.rings
         distribution_method = bridge.distribution_request
 
-        # If the bridge already has a distributor, use that.
-        #with bridgedb.Storage.getDB() as db:
-        #    distribution_method = db.getBridgeDistributor(bridge, validRings)
-
-        print("distribution method")
-        print(bridge.distribution_request)
-        # Check if the bridge requested a specific distribution method.
         print("%s bridge %s requested placement in hashring %s"
                      % (self.__class__.__name__, bridge,
                         distribution_method))
@@ -500,7 +494,6 @@ class BridgeSplitter(object):
         # before, then determine where to place it.
         if ((distribution_method not in validRings) or
             (distribution_method == "any")):
-
             pos = self.hmac(bridge.identity)
             n = int(pos[:8], 16) % self.totalP
             pos = bisect.bisect_right(self.pValues, n) - 1
@@ -510,50 +503,20 @@ class BridgeSplitter(object):
                           " pos=%s).") % (self.__class__.__name__, bridge,
                                           distribution_method, n, pos))
 
-        #with bridgedb.Storage.getDB() as db:
-            #ringname = db.insertBridgeAndGetRing(bridge, distribution_method,
-                                                # time.time(), validRings)
-            #db.commit()
+        # select a distributor based on the bridge's fingerprint
+        assert len(bridge.fingerprint) == 40
+        # Check if this is currently a valid ring name. If not, move back
+        # into default pool.
+        if distribution_method not in validRings:
+            distribution_method = defaultPool
+            print("distribution method back into default")
+            print(defaultPool)
 
-        h = bridge.fingerprint
-        assert len(h) == 40
-
-        #cur.execute("SELECT id, distributor "
-        #            "FROM Bridges WHERE hex_key = ?", (h,))
-        #v = cur.fetchone()
-        #if v is not None:
-        #    i, ring = v
-            # Check if this is currently a valid ring name. If not, move back
-            # into default pool.
-            #if ring not in validRings:
-            #    ring = defaultPool
-            # Update last_seen, address, port and (possibly) distributor.
-            #cur.execute("UPDATE Bridges SET address = ?, or_port = ?, "
-            #            "distributor = ?, last_seen = ? WHERE id = ?",
-                #        (str(bridge.address), bridge.orPort, ring,
-                    #     timeToStr(seenAt), i))
-            #return ring
-        #else:
-            # Check if this is currently a valid ring name. If not, move back
-            # into default pool.
-            #if setRing not in validRings:
-            #    setRing = defaultPool
-            # Insert it.
-            #cur.execute("INSERT INTO Bridges (hex_key, address, or_port, "
-            #            "distributor, first_seen, last_seen) "
-            #            "VALUES (?, ?, ?, ?, ?, ?)",
-            #            (h, str(bridge.address), bridge.orPort, setRing, t, t))
-            #return setRing
-
-        ring = self.ringsByName.get(ringname)
-
-        print("what is this ring now")
-        print(ringname)
-        print(type(ring))
+        ring = self.ringsByName.get(distribution_method)
         ring.insert(bridge)
 
         if ring is None:
-            logging.warn("Couldn't recognise ring named: '%s'" % ringname)
+            logging.warn("Couldn't recognise ring named: '%s'" % distribution_method)
             print("Current rings: %s" % " ".join(self.ringsByName))
 
     def dumpAssignments(self, f, description=""):
@@ -621,8 +584,8 @@ class FilteredBridgeSplitter(object):
         self.bridges.append(bridge)
         for ringname, (filterFn, subring) in self.filterRings.items():
             subring.insert(bridge)
-            #print("Inserted bridge %s into %s subhashring." %
-                              #(bridge, ringname))
+            print("Inserted bridge %s into %s subhashring." %
+                              (bridge, ringname))
 
     def extractFilterNames(self, ringname):
         """Get the names of the filters applied to a particular sub hashring.
