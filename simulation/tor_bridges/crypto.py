@@ -225,8 +225,9 @@ def getHMACFunc(key, hex=True):
     h = hmac.new(key, digestmod=DIGESTMOD)
     def hmac_fn(value):
         h_tmp = h.copy()
-        print("value")
-        print(value)
+        # JODI print block
+        #print("value")
+        #print(value)
         h_tmp.update(value)
         if hex:
             return h_tmp.hexdigest()

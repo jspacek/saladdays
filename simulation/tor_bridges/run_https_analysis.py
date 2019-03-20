@@ -15,6 +15,9 @@
 
 import crypto
 import util
+import collections
+import math
+import pandas as pd
 from bridges import Bridge
 from httpsdistributor import HTTPSDistributor
 from testutil import generateFakeBridges
@@ -23,8 +26,7 @@ import capitalbridges
 from bridgerequest import BridgeRequestBase
 from httpsrequest import HTTPSBridgeRequest
 
-key = 'aQpeOFIj8q20s98awfoiq23rpOIjFaqpEWFoij1X'
-key_bytes = b'aQpeOFIj8q20s98awfoiq23rpOIjFaqpEWFoij1X'
+key = b'aQpeOFIj8q20s98awfoiq23rpOIjFaqpEWFoij1X'
 domainmap = {
     'example.com':      'example.com',
     'dkim.example.com': 'dkim.example.com',
@@ -65,14 +67,13 @@ This simulation duplicates the description from httpsDistributor prepopulateRing
         ``(5,1)-IPv4`` and ``(5,1)-IPv6`` sets are *not* disjoint.
 
         Thus, in this example, we end up with **10 total subhashrings**.
-
 """
 def createBridgeRings():
     """
     Create the https bridge distributor
     """
     # Create a BridgeSplitter to assign the bridges to the different distributors.
-    bridgesplitter_hashring = capitalbridges.BridgeSplitter(key_bytes)
+    bridgesplitter_hashring = capitalbridges.BridgeSplitter(key)
     #<class 'capitalbridges.BridgeSplitter'>
     print("Created bridgesplitter_hashring: %r" % bridgesplitter_hashring)
 
@@ -80,11 +81,11 @@ def createBridgeRings():
     ringParams = capitalbridges.BridgeRingParameters(needPorts=[(443, 1)],
                                               needFlags=[("Stable", 1)])
 
-    # TODO open-socks-proxies.txt
+    # TODO Do we need a proxy list here?
     proxyList = []
     httpsDistributor = HTTPSDistributor(
         4, # like the eample in httpsdistributor
-        crypto.getHMAC(key_bytes, b"HTTPS-IP-Dist-Key"),
+        crypto.getHMAC(key, b"HTTPS-IP-Dist-Key"),
         proxyList,
         answerParameters=ringParams)
     HTTPS_SHARE = 10
@@ -92,15 +93,17 @@ def createBridgeRings():
 
     return bridgesplitter_hashring, httpsDistributor
 
-def run():
+def run(n):
     """
     This is BridgeDB's main entry point and main runtime loop.
     """
+    filename = "analysis/results_tor_bridges_%d_n.txt" % n
+    f = open(filename,"w+")
     (bridgesplitter_hashring, httpsDistributor) = createBridgeRings()
     print("Bridges loaded: %d" % len(bridgesplitter_hashring))
 
     httpsDistributor.prepopulateRings() # create default rings
-    bridges = generateFakeBridges()
+    bridges = generateFakeBridges(n) # generate n bridges
     print(len(bridges))
     [bridgesplitter_hashring.insert(bridge) for bridge in bridges]
     print("Bridges loaded: %d" % len(bridgesplitter_hashring))
@@ -117,23 +120,80 @@ def run():
                  % (httpsDistributor.name, len(httpsDistributor.hashring.filterRings)))
 
 
-    enum_bridges = [] # an array of tuples (bridge, load)
+    # Run trials
+    bridge = collections.namedtuple('bridge', 'index load num_in_draw trial')
+    df_all = pd.DataFrame(columns=bridge._fields)
+    trials = 100
+    n=n-1 # always this discrepancy from tor bridges
     # Make multiple client requests, record how many hits to the same bridge (load)
-    for i in range(1, 1200):
-        client_request = randomClientRequest()
-        responses = httpsDistributor.getBridges(client_request, 1)
+    for current_trial in range(0,trials):
+        bridges = [bridge(index=i,load=0,num_in_draw=0,trial=current_trial) for i in range(n)]
+        # fill up the data frame with default bridges
+        df = pd.DataFrame(bridges, columns=bridge._fields)
+        enum_bridges = []
+        i = 0
+        index = 0
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! len((enum_bridges)) %d" % len(enum_bridges))
+        while (len(enum_bridges) < n):
+            #print("LENGTH IS %d" %len(enum_bridges))
+            client_request = randomClientRequest()
+            responses = httpsDistributor.getBridges(client_request, 1)
+            for i in range(0, len(responses)):
+                address = int(responses[i].address)
+                print("WHAT IS ADDRESS IS IT IN ENUM")
+                print(address)
+                print(enum_bridges)
+                print("what is n %d" %n)
+                if (address not in enum_bridges):
+                    enum_bridges.append(address)
+                    # store this bridge at the current index in the dataframe
+                    df.at[index,'index'] = address
+                    index = index + 1
+                else:
+                    # find the bridge index
+                    #print("collision")
+                    bridge_index = enum_bridges.index(address)
+                    #print("bridge index %d" %bridge_index)
+                    # increment the load of this bridge
+                    df.at[bridge_index,'load'] = df.at[bridge_index,'load'] + 1
 
-        for i in range(0, len(responses)):
-            print(responses[i])
-            if (responses[i] not in enum_bridges):
-                enum_bridges.append(responses[i])
-            else:
-                enum_bridges[responses[i]] = enum_bridges[responses[i]] + 1
+        df_all = df_all.append(df, ignore_index=True)
 
-    for i in range(0, len(enum_bridges)):
-        print(enum_bridges[i])
+    print(df_all)
+    df_all_group = df_all.groupby('trial', as_index=False, sort=False)['load'].sum()
+    print(df_all_group.load.describe())
+    mean_samples = df_all_group.load.mean()
 
-    print(len(enum_bridges))
+    print("*****************     Sample mean = %d n = %d *********************" % (mean_samples, n))
+    #print(df_all)
+    # The max load in each trial (not the max load over all trials)
+    #df_all_max = df_all.groupby('trial', as_index=False, sort=False)['load'].max()
+    #print("maximum loads average")
+    #print(df_all_max)
+
+    # nH_n Formula using Euler Mascheroni Constant
+    H_n = (math.log(n) + 0.5772156649) + 1/(2*n)
+    #print("H_n %f" % H_n)
+    nH_n = n * H_n
+    print("Calculated mean nH_n = %f" % (nH_n))
+    # ln n / ln ln n
+    ur_max_load = math.log(n) / (math.log(math.log(n)))
+    #print("Calculated max load for uniform random %f where m=n" % ur_max_load)
+    # ln ln n / ln 2
+    pod_max_load = math.log(math.log(n))/math.log(2)
+    #print("Calculated max load for power of 2 choice %f where m=n" % pod_max_load)
+    # O(ln ln n) + m/n
+    pod_max_load_m_sgr_n = math.log(math.log(n)) + mean_samples/n
+    #print("Calculated max load for power of 2 choice %f where m >> n" % pod_max_load_m_sgr_n)
+
+    max = df_all_group.load.max()
+    min = df_all_group.load.min()
+    std = df_all_group.load.std()
+    print("%d,%d,%d,%d,%d,%d\r\n" % (n,trials,mean_samples,max,min,std))
+    f.write("%d,%d,%d,%d,%d,%d\r\n" % (n,trials,mean_samples,max,min,std))
+
+    f.flush()
+    f.close()
 
 def randomClientRequest():
     bridgeRequest = HTTPSBridgeRequest(addClientCountryCode=False)
@@ -143,4 +203,6 @@ def randomClientRequest():
     return bridgeRequest
 
 if __name__ == '__main__':
-    run()
+    n = 70 # because of frozenset (probably) bridges are cached somewhere
+    # so don't run this in a loop
+    run(n)

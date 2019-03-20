@@ -175,12 +175,13 @@ class HTTPSDistributor(Distributor):
                 mod -= 1
 
             subring_hmac = int(self._subnetToSubringHMAC(bytes(subnet,'utf-8'))[:8], 16)
-            print("subring_hmac")
-            print(subring_hmac)
+            #JODI print block
+            #print("subring_hmac")
+            #print(subring_hmac)
             subnet_mod_subrings = int(subring_hmac % mod) + 1
-            print("subnet_mod_subrings")
-            print(subnet_mod_subrings)
-            print(type(subnet_mod_subrings))
+            #print("subnet_mod_subrings")
+            #print(subnet_mod_subrings)
+            #print(type(subnet_mod_subrings))
             # return (int(self._subnetToSubringHMAC(subnet)[:8], 16) % mod) + 1
             return subnet_mod_subrings
         else:

@@ -8,12 +8,14 @@ import math
  Batch the distribution in groups of k, distribute in non-overlapping batches
 """
 # print results
-f = open("analysis/results_70.txt","w+")
-for run in range(70,71):
-    trials = 3
+f = open("analysis/results_60_quarter_window_no_repeat.txt","w+")
+for run in range(60,61):
+    trials = 100
     n = run
+    #print(n)
     seed = 43 # for reproducibility
-    window_size = n
+    window_size = int(n/4) # set to n for no batching
+    #print("window size = %d" %window_size)
     window_increment = window_size # to simpify, there are *no overlapping batches*
     window_repeat = 1 # higher repeats is making coupons "rarer"
     # better results with lower window_increment and higher repeat (just makes batches used more frequently)
