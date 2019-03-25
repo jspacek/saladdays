@@ -8,11 +8,11 @@ import math
  Batch the distribution in groups of k, distribute in non-overlapping batches
 """
 # print results
-f = open("analysis/results_60_quarter_window_no_repeat.csv","w+")
-flb = open("analysis/results_60_quarter_window_no_repeat_lb.csv","w+")
+f = open("analysis/results_10_to_100_single_window_no_repeat.csv","w+")
+flb = open("analysis/results_10_to_100_single_window_no_repeat_lb.csv","w+")
 
-for run in range(60,61):
-    trials = 100
+for run in range(10,11):
+    trials = 1000
     n = run
     #print(n)
     seed = 43 # for reproducibility
