@@ -8,13 +8,24 @@ import math
  Batch the distribution in groups of k, distribute in non-overlapping batches
 """
 # print results
-f = open("analysis/results_60_quarter_window_no_repeat.txt","w+")
+f = open("analysis/results_60_quarter_window_no_repeat.csv","w+")
+flb = open("analysis/results_60_quarter_window_no_repeat_lb.csv","w+")
+
 for run in range(60,61):
     trials = 100
     n = run
     #print(n)
     seed = 43 # for reproducibility
     window_size = int(n/4) # set to n for no batching
+    # create headers
+    headers = []
+    for i in range(1,n+1):
+        headers.append("p%d" % i)
+    print(headers)
+    headers = ",".join(str(x) for x in headers)
+
+    flb.write("%s,%s,%s,%s\r\n" % ("n","num_tries","optimal_load",headers))
+
     #print("window size = %d" %window_size)
     window_increment = window_size # to simpify, there are *no overlapping batches*
     window_repeat = 1 # higher repeats is making coupons "rarer"
@@ -33,6 +44,7 @@ for run in range(60,61):
         j = 0 + window_size
         current_repeat = 1
         miss = 0
+        num_tries = 0
 
         while (len(known_proxies) < n):
 
@@ -69,7 +81,22 @@ for run in range(60,61):
                 j = (j + window_increment) % n
 
                 current_repeat = 1
-        #print(df)
+
+            num_tries = num_tries + 1
+
+        print(df)
+        # Calculate the "optimal load"
+        optimal_load = num_tries/n
+        print("optimal_load = %d / %d = %d" %(num_tries, n, optimal_load) )
+        # Sum up the optimal load deviation with a number for all above and another for all below
+        # so that min bins don't cancel out max bins
+        #min_optimal = (df.load < optimal_load).sum()
+        sorted_loads = df.load.values.sort()
+        loads = ",".join(str(x) for x in df.load.values)
+        print(loads)
+
+        flb.write("%d,%d,%d,%s\r\n" % (n,num_tries,optimal_load,loads))
+
         df_all = df_all.append(df, ignore_index=True)
     #print(df_all)
     # group by trial to find the number of draws in each trial (the E[T])
@@ -117,3 +144,5 @@ for run in range(60,61):
 
 f.flush()
 f.close()
+flb.flush()
+flb.close()

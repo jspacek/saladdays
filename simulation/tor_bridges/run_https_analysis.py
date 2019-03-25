@@ -97,8 +97,12 @@ def run(n):
     """
     This is BridgeDB's main entry point and main runtime loop.
     """
-    filename = "analysis/results_tor_bridges_%d_n.txt" % n
+    filename = "analysis/results_tor_bridges_%d_n.csv" % n
+    flb_name = "analysis/results_tor_bridges_%d_n_lb.csv" % n
+
     f = open(filename,"w+")
+    flb = open(flb_name,"w+")
+
     (bridgesplitter_hashring, httpsDistributor) = createBridgeRings()
     print("Bridges loaded: %d" % len(bridgesplitter_hashring))
 
@@ -133,6 +137,7 @@ def run(n):
         enum_bridges = []
         i = 0
         index = 0
+        num_tries = 0
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! len((enum_bridges)) %d" % len(enum_bridges))
         while (len(enum_bridges) < n):
             #print("LENGTH IS %d" %len(enum_bridges))
@@ -148,6 +153,7 @@ def run(n):
                     enum_bridges.append(address)
                     # store this bridge at the current index in the dataframe
                     df.at[index,'index'] = address
+                    df.at[index,'load'] = df.at[index,'load'] + 1
                     index = index + 1
                 else:
                     # find the bridge index
@@ -156,6 +162,18 @@ def run(n):
                     #print("bridge index %d" %bridge_index)
                     # increment the load of this bridge
                     df.at[bridge_index,'load'] = df.at[bridge_index,'load'] + 1
+
+                num_tries = num_tries + 1
+        # Calculate the "optimal load"
+        optimal_load = num_tries/n
+        print("optimal_load = %d / %d = %d" %(num_tries, n, optimal_load) )
+        # Sum up the optimal load deviation with a number for all above and another for all below
+        # so that min bins don't cancel out max bins
+        #min_optimal = (df.load < optimal_load).sum()
+        sorted_loads = df.load.values.sort()
+        loads = ",".join(str(x) for x in df.load.values)
+        print(loads)
+        flb.write("%d,%d,%d,%s\r\n" % (n,num_tries,optimal_load,loads))
 
         df_all = df_all.append(df, ignore_index=True)
 
@@ -203,6 +221,6 @@ def randomClientRequest():
     return bridgeRequest
 
 if __name__ == '__main__':
-    n = 70 # because of frozenset (probably) bridges are cached somewhere
+    n = 61 # because of frozenset (probably) bridges are cached somewhere
     # so don't run this in a loop
     run(n)
