@@ -11,7 +11,7 @@ import math
 f = open("analysis/results_10_to_100_single_window_no_repeat.csv","w+")
 flb = open("analysis/results_10_to_100_single_window_no_repeat_lb.csv","w+")
 
-for run in range(10,11):
+for run in range(10,100):
     trials = 1000
     n = run
     #print(n)
