@@ -1,4 +1,4 @@
-Proxy distribution simulator that compares an adaptive proxy distribution scheme to uniform random and power of d choice strategies. The adaptive proxy distribution "sandwiches" between bounds to minimize the amount of collateral damage of honest proxies.
+Proxy distribution simulator that compares an adaptive proxy distribution scheme to uniform random, power of 2 choice strategies, and Tor's `bridgedb` bridge distributor.
 
 ## SETUP
 

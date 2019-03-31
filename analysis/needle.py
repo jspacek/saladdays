@@ -8,20 +8,20 @@ import math
  Batch the distribution in groups of k, distribute in non-overlapping batches
 """
 # print results
-f = open("analysis/results_10_to_100_single_window_no_repeat.csv","w+")
-flb = open("analysis/results_10_to_100_single_window_no_repeat_lb.csv","w+")
+f = open("analysis/results_100_1_steps_no_repeat_10_n_past_enum.csv","w+")
+flb = open("analysis/results_100_1_steps_no_repeat_10_n_past_enum_lb.csv","w+")
 
-for run in range(10,100):
-    trials = 1000
+for run in range(100,101):
+    trials = 20
     n = run
     #print(n)
     seed = 43 # for reproducibility
-    window_size = int(n/4) # set to n for no batching
+    window_size = n#int(n/5) # set to n for no batching
     # create headers
     headers = []
     for i in range(1,n+1):
         headers.append("p%d" % i)
-    print(headers)
+    #print(headers)
     headers = ",".join(str(x) for x in headers)
 
     flb.write("%s,%s,%s,%s\r\n" % ("n","num_tries","optimal_load",headers))
@@ -45,9 +45,12 @@ for run in range(10,100):
         current_repeat = 1
         miss = 0
         num_tries = 0
-
-        while (len(known_proxies) < n):
-
+        # length of known proxies can never be more than n
+        stop = 1000*n
+        load_balance = 0
+        #while (len(known_proxies) < n):
+        while (load_balance < stop):
+            load_balance = load_balance + 1
             random_interval_1 = random.randint(0, window_size-1)
             random_index_1 = (random_interval_1 + i) % n
             random_proxy_1_load = df.at[random_index_1,'load']
@@ -141,7 +144,8 @@ for run in range(10,100):
     std = df_all_group.load.std()
     #print("%d,%d,%d,%d,%d,%d\r\n" % (n,trials,mean_samples,max,min,std))
     f.write("%d,%d,%d,%d,%d,%d\r\n" % (n,trials,mean_samples,max,min,std))
-
+    f.flush()
+    flb.flush()
 f.flush()
 f.close()
 flb.flush()
