@@ -1,29 +1,18 @@
-Proxy distribution simulator that compares an adaptive proxy distribution scheme to uniform random, power of 2 choice strategies, and Tor's `bridgedb` bridge distributor.
+Proxy distribution simulator that compares an adaptive proxy distribution scheme to 1) uniform random, 2) power of 2 choice strategies, and 3) Tor's `bridgedb` bridge distributor.
 
 ## SETUP
 
-### Docker
-
-build: `docker build --tag sim1 .`
-
-verify image: `docker images`
-
-ssh to container: `docker run -it --entrypoint=/bin/bash sim1:latest`
-
 ### Python
-Use python3
+Tested on python 3.7.3
 
-`pip install simpy`
+Additional libraries needed: `simpy`, `matplotlib`, `pandas`
 
-`pip install matplotlib`
+## SIMULATION
 
-`pip install pandas`
+Run `python simulation/run.py`
 
-
-## RUN SIMULATION
-
-In root directory: `python simulation/run.py`
+This runs the proxy needle algorithm and the 3 comparison algorithms.
 
 ## GENERATE ANALYSES
 
-In root directory: `python analysis/collateral_damage.py`
+Run `python analysis/collateral_damage.py`
