@@ -1,5 +1,7 @@
 Proxy distribution simulator that compares an adaptive proxy distribution scheme to 1) uniform random, 2) power of 2 choice strategies, and 3) Tor's `bridgedb` bridge distributor.
 
+Referenced in https://www.cs.ubc.ca/~bestchai/theses/jodi-spacek-msc-thesis-2019.pdf
+
 ## SETUP
 
 ### Python
